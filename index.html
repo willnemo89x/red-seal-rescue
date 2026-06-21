@@ -182,6 +182,7 @@ tr.click:hover td{background:var(--panel2)}
     </nav>
     <div class="side-foot">
       <b>Local &amp; private.</b> All data lives in this browser only. Use <b>Export</b> on the Dashboard to back up.
+      <div id="verline" style="margin-top:9px;opacity:.65;font-family:var(--mono)"></div>
     </div>
   </aside>
   <main class="main" id="main"></main>
@@ -197,6 +198,8 @@ tr.click:hover td{background:var(--panel2)}
    Passing standard modelled at 70% (Red Seal standard).
    ============================================================ */
 const PASS = 70;
+const APP_VERSION = "1.0";       // bump on each release
+const APP_UPDATED = "2026-06-21"; // YYYY-MM-DD of this release
 
 const TRADES = {
   electrician: {
@@ -1445,6 +1448,8 @@ function importData(){
 /* ============================================================
    13. BOOT
    ============================================================ */
+const verEl=document.getElementById("verline");
+if(verEl)verEl.textContent="v"+APP_VERSION+" · updated "+fmtDate(APP_UPDATED);
 go("dashboard");
 </script>
 </body>
