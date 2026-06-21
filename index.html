@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Red Seal Rescue — Coaching Toolkit</title>
+<style>
+/* ============================================================
+   Red Seal Rescue — Coaching Toolkit
+   Single-file app. No build step, no network. Just open it.
+   Data persists in this browser via localStorage.
+   ============================================================ */
+:root{
+  --bg:#11151a; --bg2:#171c23; --panel:#1d242d; --panel2:#232b35;
+  --line:#2e3742; --line2:#3a4654;
+  --ink:#eef2f6; --ink2:#aab6c2; --ink3:#7d8a98;
+  --amber:#ffb000; --amber-d:#cc8c00;
+  --red:#c8102e; --red-d:#9c0c24;
+  --green:#34c759; --green-d:#1f9d44;
+  --blue:#4aa3ff; --warn:#ff7a45;
+  --radius:12px; --shadow:0 8px 28px rgba(0,0,0,.35);
+  --mono:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:15px}
+.mono{font-family:var(--mono)}
+
+/* layout */
+.app{display:flex;min-height:100vh}
+.side{width:248px;flex:0 0 248px;background:var(--bg2);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:18px 14px}
+.main{flex:1;min-width:0;padding:28px 34px 80px;max-width:1180px}
+.brand{display:flex;align-items:center;gap:11px;padding:6px 8px 18px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.seal{width:38px;height:38px;border-radius:50%;flex:0 0 38px;background:radial-gradient(circle at 50% 38%,var(--red) 0 58%,var(--red-d) 60% 100%);position:relative;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}
+.seal:before{content:"";position:absolute;inset:6px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.55)}
+.seal:after{content:"\2692";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px}
+.brand b{font-size:15px;line-height:1.1;letter-spacing:-.02em}
+.brand span{display:block;font-size:10.5px;color:var(--amber);text-transform:uppercase;letter-spacing:.14em;margin-top:2px;font-weight:700}
+.nav{display:flex;flex-direction:column;gap:3px;margin-top:14px}
+.nav button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:transparent;border:0;color:var(--ink2);padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;transition:.12s}
+.nav button .ic{width:20px;text-align:center;font-size:15px;opacity:.9}
+.nav button:hover{background:var(--panel);color:var(--ink)}
+.nav button.on{background:var(--panel2);color:var(--ink);box-shadow:inset 3px 0 0 var(--amber)}
+.nav .sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--ink3);padding:14px 12px 6px;font-weight:700}
+.side-foot{margin-top:auto;padding:12px 10px 4px;border-top:1px solid var(--line);font-size:11px;color:var(--ink3);line-height:1.5}
+.side-foot b{color:var(--ink2)}
+
+/* generic */
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:14px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--ink2)}
+.dim{color:var(--ink3)}
+.center{text-align:center}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.hidden{display:none!important}
+.page-head{margin-bottom:22px}
+.page-head h1{font-size:25px}
+.page-head p{margin:7px 0 0;color:var(--ink2);max-width:680px}
+.kicker{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--amber);font-weight:700;margin-bottom:8px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.card.tight{padding:15px}
+.card h3{font-size:16px;margin-bottom:4px}
+.card .sub{color:var(--ink3);font-size:12.5px;margin-bottom:14px}
+
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}.side{width:64px;flex-basis:64px}.brand b,.brand span,.nav button .lbl,.nav .sec,.side-foot{display:none}.nav button{justify-content:center}}
+
+label.fld{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink2)}
+input[type=text],input[type=number],input[type=date],select,textarea{background:var(--bg);border:1px solid var(--line2);color:var(--ink);padding:10px 12px;border-radius:9px;width:100%;outline:none;transition:.12s}
+input:focus,select:focus,textarea:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,176,0,.13)}
+textarea{resize:vertical;min-height:74px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);padding:10px 16px;border-radius:9px;font-weight:700;font-size:14px;transition:.12s}
+.btn:hover{border-color:var(--ink3)}
+.btn.primary{background:var(--amber);border-color:var(--amber);color:#1a1206}
+.btn.primary:hover{background:#ffbe2e}
+.btn.red{background:var(--red);border-color:var(--red);color:#fff}
+.btn.red:hover{background:#e01437}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:7px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:30px;background:var(--panel2);color:var(--ink2);border:1px solid var(--line2)}
+.pill.amber{background:rgba(255,176,0,.13);color:var(--amber);border-color:rgba(255,176,0,.3)}
+.pill.green{background:rgba(52,199,89,.13);color:var(--green);border-color:rgba(52,199,89,.3)}
+.pill.red{background:rgba(200,16,46,.15);color:#ff5e78;border-color:rgba(200,16,46,.35)}
+.pill.blue{background:rgba(74,163,255,.13);color:var(--blue);border-color:rgba(74,163,255,.3)}
+
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+.stat .n{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.stat .l{font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-top:7px;font-weight:600}
+
+.bar{height:9px;border-radius:6px;background:var(--bg);overflow:hidden;border:1px solid var(--line)}
+.bar > i{display:block;height:100%;border-radius:6px;transition:width .5s ease}
+
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);font-weight:700;padding:9px 12px;border-bottom:1px solid var(--line)}
+td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:14px}
+tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--panel2)}
+
+.empty{text-align:center;padding:46px 20px;color:var(--ink3);border:1.5px dashed var(--line2);border-radius:var(--radius)}
+.empty .big{font-size:34px;margin-bottom:10px;opacity:.5}
+
+/* segmented */
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line2);border-radius:9px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:var(--ink2);padding:7px 13px;border-radius:7px;font-weight:700;font-size:13px}
+.seg button.on{background:var(--panel2);color:var(--ink)}
+
+/* quiz */
+.q-opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line2);background:var(--bg);border-radius:10px;padding:13px 15px;margin-bottom:10px;cursor:pointer;transition:.1s}
+.q-opt:hover{border-color:var(--ink3)}
+.q-opt.sel{border-color:var(--amber);background:rgba(255,176,0,.08)}
+.q-opt.correct{border-color:var(--green);background:rgba(52,199,89,.1)}
+.q-opt.wrong{border-color:var(--red);background:rgba(200,16,46,.1)}
+.q-opt .key{flex:0 0 26px;height:26px;border-radius:7px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.q-opt.sel .key{background:var(--amber);color:#1a1206}
+.q-opt.correct .key{background:var(--green);color:#06210f}
+.q-opt.wrong .key{background:var(--red);color:#fff}
+
+.scale{display:flex;gap:7px}
+.scale button{flex:1;border:1px solid var(--line2);background:var(--bg);color:var(--ink2);border-radius:8px;padding:9px 0;font-weight:700}
+.scale button.on{background:var(--amber);border-color:var(--amber);color:#1a1206}
+
+.timer{font-family:var(--mono);font-weight:700;font-size:15px;padding:6px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line2)}
+.timer.warn{color:var(--warn);border-color:var(--warn)}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--line2);color:var(--ink);padding:12px 20px;border-radius:10px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;z-index:50;font-weight:600}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.divider{height:1px;background:var(--line);margin:18px 0}
+.tag{font-size:11px;color:var(--ink3);font-weight:600}
+.week{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:12px}
+.week .wh{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:var(--panel2);gap:10px;flex-wrap:wrap}
+.week .wb{padding:6px 16px 14px}
+.task{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:0}
+.task input{width:18px;height:18px;accent-color:var(--amber);flex:0 0 auto}
+.task.done .lbl{text-decoration:line-through;color:var(--ink3)}
+.chip{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em}
+
+.modal-bg{position:fixed;inset:0;background:rgba(5,8,11,.66);display:flex;align-items:center;justify-content:center;z-index:40;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow);width:100%;max-width:520px;padding:24px;max-height:88vh;overflow:auto}
+.modal h2{font-size:19px;margin-bottom:4px}
+
+.spark{display:flex;align-items:flex-end;gap:4px;height:46px}
+.spark i{flex:1;background:var(--line2);border-radius:3px 3px 0 0;min-height:3px;position:relative}
+.spark i.pass{background:var(--green)}
+.spark i.fail{background:var(--red)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="seal"></div>
+      <div><b>Red Seal Rescue</b><span>Coaching Toolkit</span></div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="sec">Coach</div>
+      <button data-view="dashboard"><span class="ic">▣</span><span class="lbl">Dashboard</span></button>
+      <button data-view="clients"><span class="ic">▤</span><span class="lbl">Clients</span></button>
+      <div class="sec">Tools</div>
+      <button data-view="intake"><span class="ic">◈</span><span class="lbl">Readiness Intake</span></button>
+      <button data-view="exam"><span class="ic">◷</span><span class="lbl">Mock Exam</span></button>
+      <button data-view="plan"><span class="ic">▦</span><span class="lbl">Study Plan</span></button>
+      <button data-view="bank"><span class="ic">✎</span><span class="lbl">Question Bank</span></button>
+    </nav>
+    <div class="side-foot">
+      <b>Local &amp; private.</b> All data lives in this browser only. Use <b>Export</b> on the Dashboard to back up.
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   1. TRADE + QUESTION DATA
+   Extend QUESTIONS by adding entries. Each question:
+   { trade, block, q, opts:[4], answer:0-3, why }
+   Blocks come from the Red Seal NOA "Major Work Activities".
+   Passing standard modelled at 70% (Red Seal standard).
+   ============================================================ */
+const PASS = 70;
+
+const TRADES = {
+  electrician: {
+    name:"Construction Electrician", code:"309A", emoji:"⚡",
+    blocks:["Safety & Code","Circuits & Theory","Wiring Methods","Motors & Controls","Services & Distribution"]
+  },
+  millwright: {
+    name:"Industrial Mechanic (Millwright)", code:"433A", emoji:"⚙️",
+    blocks:["Safety & Rigging","Bearings & Lubrication","Pumps & Drives","Alignment","Hydraulics & Pneumatics"]
+  },
+  welder: {
+    name:"Welder", code:"456A", emoji:"🔥",
+    blocks:["Safety & Setup","Metallurgy","SMAW","GMAW/FCAW","Symbols & Inspection"]
+  },
+  plumber: {
+    name:"Plumber", code:"306A", emoji:"🔧",
+    blocks:["Safety & Code","Drainage (DWV)","Water Supply","Venting","Fixtures & Gas"]
+  }
+};
+
+const QUESTIONS = [
+  /* ---- Electrician (grounded in CSA C22.1:24 — 2024 Canadian Electrical Code) ---- */
+  /* Safety & Code */
+  {trade:"electrician",block:"Safety & Code",q:"Per CEC Rule 8-102, the maximum total voltage drop from the supply side of the consumer's service to the point of utilization is:",opts:["2%","3%","5%","8%"],answer:2,why:"Rule 8-102 limits overall voltage drop to 5% from the supply side of the consumer's service to the point of utilization (feeders plus branch circuits combined)."},
+  {trade:"electrician",block:"Safety & Code",q:"What colour identifies the grounded (neutral) conductor in a standard installation?",opts:["Green","Black","White or natural grey","Red"],answer:2,why:"The grounded conductor is identified by white or natural grey insulation; green (or bare) is the bonding-to-ground conductor."},
+  {trade:"electrician",block:"Safety & Code",q:"A Class A ground fault circuit interrupter (GFCI) is designed to trip when the ground-fault current reaches:",opts:["4 mA","6 mA","30 mA","100 mA"],answer:1,why:"By CEC definition a Class A GFCI trips when ground-fault current is 6 mA or more, but not at 4 mA or less — the level that protects people from shock."},
+  {trade:"electrician",block:"Safety & Code",q:"Per Rule 26-706, receptacles of configuration 5-15R and 5-20R installed in dwelling units must be:",opts:["Weatherproof","Tamper-resistant and marked as such","Switched","Rated 20 A"],answer:1,why:"Rule 26-706 requires tamper-resistant receptacles (so marked) in dwelling units, child-care facilities, hotel guest rooms, preschools and similar locations."},
+  {trade:"electrician",block:"Safety & Code",q:"Under Rule 26-704, a 5-15R receptacle installed within 1.5 m of a sink, bathtub, or shower stall must be:",opts:["Switched at the panel","Protected by a Class A GFCI","On its own 20 A circuit","Mounted at least 1 m high"],answer:1,why:"Rule 26-704 requires Class A GFCI protection for 5-15R/5-20R receptacles within 1.5 m of wash basins, bathtubs, or shower stalls."},
+  {trade:"electrician",block:"Safety & Code",q:"In a dwelling unit, branch circuits supplying 125 V receptacles rated 20 A or less generally require what protection (Rule 26-724)?",opts:["Class A GFCI","Combination-type arc-fault (AFCI) protection","A surge protector","Double-pole breaker"],answer:1,why:"Rule 26-724 requires combination-type AFCI protection for dwelling-unit branch circuits supplying 125 V receptacles rated 20 A or less, with limited exceptions."},
+  {trade:"electrician",block:"Safety & Code",q:"Per Rule 2-308, the minimum working space (with secure footing) about electrical equipment that requires examination or maintenance while energized is:",opts:["600 mm","750 mm","1 m","2 m"],answer:2,why:"Rule 2-308 requires a minimum working space of 1 m, with secure footing, about equipment containing disconnecting/operating means or requiring maintenance."},
+  {trade:"electrician",block:"Safety & Code",q:"A receptacle in a bathroom or washroom must be located:",opts:["Inside the shower stall","Within 1.5 m of the wash basin and outside any tub or shower enclosure","Directly above the basin","At least 300 mm below the basin"],answer:1,why:"The Code requires bathroom receptacles to be within 1.5 m of the wash basin and outside the bathtub or shower enclosure (and Class A GFCI protected)."},
+  {trade:"electrician",block:"Safety & Code",q:"Before working on a circuit believed to be de-energized, the controlling first step is to:",opts:["Tape over the breaker","Lock out, tag out, and test for absence of voltage","Notify the customer only","Wear gloves and proceed"],answer:1,why:"Lockout/tagout the source, then verify zero energy by testing for absence of voltage with a meter proven on a known source before and after — the core safe-work procedure."},
+  {trade:"electrician",block:"Safety & Code",q:"A continuous load is one expected to operate for 3 hours or more. Per the Code, a continuous load should not exceed what percentage of the branch-circuit rating?",opts:["50%","80%","100%","125%"],answer:1,why:"Conductors and overcurrent devices are sized so a continuous load is ≤80% of the rating (equivalently, the circuit is rated at 125% of the continuous load)."},
+
+  /* Circuits & Theory */
+  {trade:"electrician",block:"Circuits & Theory",q:"Three 12 Ω resistors are connected in parallel. What is the total resistance?",opts:["36 Ω","12 Ω","4 Ω","6 Ω"],answer:2,why:"For equal parallel resistors, R = value ÷ count = 12 ÷ 3 = 4 Ω."},
+  {trade:"electrician",block:"Circuits & Theory",q:"A 240 V resistive load draws 10 A. What power does it consume?",opts:["240 W","2400 W","24 W","1200 W"],answer:1,why:"P = V × I = 240 × 10 = 2400 W."},
+  {trade:"electrician",block:"Circuits & Theory",q:"Using Ohm's law, the current through a 60 Ω resistor across 120 V is:",opts:["0.5 A","2 A","7200 A","12 A"],answer:1,why:"I = V ÷ R = 120 ÷ 60 = 2 A."},
+  {trade:"electrician",block:"Circuits & Theory",q:"Resistors of 4 Ω, 6 Ω, and 10 Ω are connected in series. The total resistance is:",opts:["2 Ω","20 Ω","240 Ω","1.9 Ω"],answer:1,why:"Series resistances add directly: 4 + 6 + 10 = 20 Ω."},
+  {trade:"electrician",block:"Circuits & Theory",q:"In any series circuit, which quantity is the same at every point?",opts:["Voltage","Current","Resistance","Power"],answer:1,why:"A series circuit has one path, so the current is identical everywhere; voltage divides across the resistances."},
+  {trade:"electrician",block:"Circuits & Theory",q:"Power factor is the ratio of:",opts:["Apparent power to true power","True power (W) to apparent power (VA)","Voltage to current","Reactive power to true power"],answer:1,why:"Power factor = true power (watts) ÷ apparent power (volt-amperes); it equals the cosine of the phase angle between voltage and current."},
+  {trade:"electrician",block:"Circuits & Theory",q:"A 1500 W heater runs for 4 hours. The energy used is:",opts:["375 Wh","6 kWh","1.5 kWh","6000 kWh"],answer:1,why:"Energy = power × time = 1500 W × 4 h = 6000 Wh = 6 kWh."},
+  {trade:"electrician",block:"Circuits & Theory",q:"As a copper conductor heats up, its resistance:",opts:["Decreases","Stays exactly the same","Increases","Drops to zero"],answer:2,why:"Copper has a positive temperature coefficient — resistance rises as temperature increases, which is why ampacity derates with heat."},
+  {trade:"electrician",block:"Circuits & Theory",q:"A single-phase transformer steps 240 V down to 120 V. Its turns ratio (primary:secondary) is:",opts:["1:2","2:1","4:1","1:1"],answer:1,why:"Voltage is proportional to turns: 240:120 = 2:1, so the primary has twice the turns of the secondary."},
+
+  /* Wiring Methods */
+  {trade:"electrician",block:"Wiring Methods",q:"For NMD90 cable on typical 15 A/20 A devices, ampacity is taken from which temperature column?",opts:["60°C","75°C","90°C","110°C"],answer:0,why:"Although NMD90 is rated 90°C, its ampacity is taken from the 60°C column because terminations on standard devices are rated 60°C, unless equipment is marked otherwise."},
+  {trade:"electrician",block:"Wiring Methods",q:"In box-fill calculations, all bonding (grounding) conductors entering a box together count as:",opts:["Zero conductors","One conductor","One per bond wire","Two conductors"],answer:1,why:"All bonding conductors in a box are collectively counted as a single conductor for box-fill purposes."},
+  {trade:"electrician",block:"Wiring Methods",q:"A copper bonding conductor smaller than No. 6 AWG that is run exposed must be:",opts:["Painted green","Protected from mechanical damage (e.g. in a raceway)","Doubled up","Left bare and unsupported"],answer:1,why:"A copper bonding conductor smaller than No. 6 AWG must be protected from mechanical damage unless run in a raceway or otherwise safeguarded."},
+  {trade:"electrician",block:"Wiring Methods",q:"The smallest copper conductor generally permitted for a 15 A general-purpose branch circuit is:",opts:["No. 18 AWG","No. 16 AWG","No. 14 AWG","No. 10 AWG"],answer:2,why:"No. 14 AWG copper is the minimum for a 15 A branch circuit; No. 12 is used for 20 A circuits."},
+  {trade:"electrician",block:"Wiring Methods",q:"Non-metallic-sheathed cable (NMD90) must be secured within what distance of each box?",opts:["150 mm","300 mm","1 m","1.5 m"],answer:1,why:"NMD90 is secured within 300 mm of each box and at intervals not exceeding 1.5 m along the run."},
+  {trade:"electrician",block:"Wiring Methods",q:"Which colour is reserved for the bonding/grounding conductor?",opts:["White","Red","Green (or bare)","Blue"],answer:2,why:"Green, green-with-yellow-stripe, or bare identifies the bonding conductor; white/grey is the neutral; other colours are ungrounded (hot)."},
+  {trade:"electrician",block:"Wiring Methods",q:"A cable entering a metal box must be secured by an approved connector primarily to:",opts:["Improve appearance","Protect the conductors from abrasion and provide strain relief","Increase ampacity","Reduce voltage drop"],answer:1,why:"Connectors anchor the cable (strain relief) and protect conductors from the sharp edges of the knockout, preventing insulation damage."},
+  {trade:"electrician",block:"Wiring Methods",q:"T90 nylon (TWN75/T90) building wire has a maximum conductor temperature rating of:",opts:["60°C","75°C","90°C","105°C"],answer:2,why:"T90 insulation is rated for a maximum conductor operating temperature of 90°C in dry locations."},
+
+  /* Motors & Controls */
+  {trade:"electrician",block:"Motors & Controls",q:"Interchanging any two line conductors of a three-phase motor will:",opts:["Increase speed","Reverse rotation","Burn the windings","Have no effect"],answer:1,why:"Swapping any two of the three leads reverses the phase sequence, reversing the direction of rotation."},
+  {trade:"electrician",block:"Motors & Controls",q:"A contact that is closed at rest and opens when its coil energizes is a:",opts:["Normally-open (NO) contact","Normally-closed (NC) contact","Overload contact","On-delay timer"],answer:1,why:"A normally-closed (NC) contact conducts at rest and opens when the coil/relay is energized."},
+  {trade:"electrician",block:"Motors & Controls",q:"A motor overload relay primarily protects the motor against:",opts:["Short circuits and ground faults","Sustained overcurrent and overheating","Lightning surges","Low power factor"],answer:1,why:"Overload relays respond to prolonged moderate overcurrent (overheating). Short circuits and ground faults are cleared by the branch-circuit overcurrent device."},
+  {trade:"electrician",block:"Motors & Controls",q:"In a standard 3-wire start/stop control, the 'seal-in' (holding) contact across the start button provides:",opts:["Overload protection","A maintained circuit so the motor keeps running after the button is released, with low-voltage release","Reversing","Speed control"],answer:1,why:"The holding contact keeps the coil energized after the start button is released; if voltage is lost the coil drops out and won't restart on its own (low-voltage release)."},
+  {trade:"electrician",block:"Motors & Controls",q:"Compared with a control relay, a contactor is built to:",opts:["Switch only signal-level currents","Switch higher motor/power loads","Operate only on DC","Replace the overload relay"],answer:1,why:"A contactor is a heavy-duty switching device rated for motor and power loads, whereas relays generally switch lighter control-level currents."},
+  {trade:"electrician",block:"Motors & Controls",q:"A motor's thermal overload heater element is selected based on the motor's:",opts:["Locked-rotor current","Full-load current (FLA)","Horsepower only","Service factor only"],answer:1,why:"Overload elements are sized from the motor nameplate full-load current so they trip on sustained overcurrent before the windings overheat."},
+  {trade:"electrician",block:"Motors & Controls",q:"During across-the-line (direct-on-line) starting, an induction motor draws approximately:",opts:["The same as full-load current","About 6 times full-load (locked-rotor) current","Half of full-load current","No current until up to speed"],answer:1,why:"Locked-rotor inrush is typically around 6× the full-load current, which is why larger motors may use reduced-voltage starting."},
+
+  /* Services & Distribution */
+  {trade:"electrician",block:"Services & Distribution",q:"In a 120/240 V single-phase 3-wire system, the voltage between the two ungrounded conductors is:",opts:["120 V","240 V","208 V","347 V"],answer:1,why:"The two hot legs are 180° apart across the transformer secondary: 240 V line-to-line and 120 V line-to-neutral."},
+  {trade:"electrician",block:"Services & Distribution",q:"Per Rule 8-200, the basic calculated load for the first 90 m² of living area in a single dwelling is:",opts:["3000 W","5000 W","1000 W","8000 W"],answer:1,why:"Rule 8-200 sets a basic load of 5000 W for the first 90 m² of living area, plus 1000 W for each additional 90 m² (or portion)."},
+  {trade:"electrician",block:"Services & Distribution",q:"Per Rule 8-304, the maximum number of outlets on a 15 A, 2-wire branch circuit (device marked for 80% continuous) is:",opts:["8","10","12","15"],answer:2,why:"Rule 8-304 permits a maximum of 12 outlets on a 15 A branch circuit where the overcurrent device is marked for continuous operation at 80%."},
+  {trade:"electrician",block:"Services & Distribution",q:"For receptacles serving a kitchen counter in a dwelling, the maximum number of receptacles permitted on one branch circuit is:",opts:["1","2","4","6"],answer:1,why:"Kitchen-counter receptacles require at least two branch circuits, with no more than two receptacles connected to any one of those circuits."},
+  {trade:"electrician",block:"Services & Distribution",q:"The minimum ampacity of the consumer's service for a single dwelling is generally:",opts:["60 A","100 A","125 A","200 A"],answer:1,why:"Rule 8-200 requires a single-dwelling consumer's service rated not less than 100 A (3-wire)."},
+  {trade:"electrician",block:"Services & Distribution",q:"In a balanced 120/240 V 3-wire circuit, the identified (neutral) conductor carries:",opts:["The sum of both line currents","The difference (imbalance) between the two line currents","Twice the line current","No current ever"],answer:1,why:"The neutral carries only the unbalanced portion — the difference between the two ungrounded conductors' currents; it is zero when the legs are perfectly balanced."},
+  {trade:"electrician",block:"Services & Distribution",q:"At the service, the main bonding jumper connects the:",opts:["Two ungrounded legs together","Identified (neutral) bus to the enclosure/ground","Meter to the panel cover","Branch breakers to the neutral"],answer:1,why:"The main bonding jumper ties the grounded (neutral) bus to the service enclosure and grounding system at one point, establishing the ground-fault return path."},
+  {trade:"electrician",block:"Services & Distribution",q:"A single-line (one-line) diagram is used primarily to:",opts:["Show the exact physical routing of every conductor","Represent the power distribution and protection scheme in simplified form","List material take-offs","Show wiring colours"],answer:1,why:"A single-line diagram uses one line and standard symbols to show how power flows through services, feeders, and protective devices — a system overview, not a physical wiring map."},
+
+  /* ---- Millwright / Industrial Mechanic (433A) ---- */
+  /* Safety & Rigging */
+  {trade:"millwright",block:"Safety & Rigging",q:"Tension in each leg of a two-leg sling is greatest when the sling angle (measured from horizontal):",opts:["Increases toward vertical","Decreases toward horizontal","Stays at exactly 90°","Has no effect on tension"],answer:1,why:"As the angle to horizontal decreases, the load multiplier on each leg climbs sharply — a 30° sling sees roughly double the tension of a 90° lift."},
+  {trade:"millwright",block:"Safety & Rigging",q:"The working load limit (WLL) of a sling differs from its breaking strength because the WLL:",opts:["Is the same value","Includes a design (safety) factor, typically 5:1","Ignores the safety factor","Is always higher than breaking strength"],answer:1,why:"WLL = breaking strength ÷ design factor (commonly 5:1 for slings), giving a safe everyday rating well below the point of failure."},
+  {trade:"millwright",block:"Safety & Rigging",q:"To lift a load without it tipping or swinging, the hook should be positioned:",opts:["At the heaviest corner","Directly above the load's centre of gravity","At any convenient point","Below the centre of gravity"],answer:1,why:"When the hook is directly over the centre of gravity, the load hangs level and stable; off-centre lifts tip or shift."},
+  {trade:"millwright",block:"Safety & Rigging",q:"For overhead lifting with an alloy chain sling, the minimum acceptable grade is generally:",opts:["Grade 30 (proof coil)","Grade 43 (high-test)","Grade 80 or 100","Any grade"],answer:2,why:"Only Grade 80 or 100 alloy chain is rated for overhead lifting; lower grades (30, 43, 70) are for tie-down and dragging, not lifting people or loads overhead."},
+  {trade:"millwright",block:"Safety & Rigging",q:"During a crane lift, who is permitted to give the STOP signal?",opts:["Only the designated signaller","Only the operator","Anyone who sees a hazard","Only the supervisor"],answer:2,why:"Although one designated signaller directs the lift, anyone who sees a hazard may give an emergency STOP — safety overrides the chain of command."},
+  {trade:"millwright",block:"Safety & Rigging",q:"A wire-rope sling should be removed from service when:",opts:["It is slightly dusty","It shows kinking, birdcaging, or excessive broken wires","It has been used once","The tag is faded"],answer:1,why:"Kinks, birdcaging, crushing, heat damage, or broken wires beyond the allowable count are removal-from-service criteria — the sling has lost rated strength."},
+  {trade:"millwright",block:"Safety & Rigging",q:"Shock loading a sling is dangerous because it:",opts:["Has no real effect","Momentarily multiplies the force far above the static load","Only matters for chain","Reduces the load"],answer:1,why:"A sudden start, stop, or drop creates a dynamic force that can be several times the static weight, potentially exceeding the sling's WLL instantly."},
+  {trade:"millwright",block:"Safety & Rigging",q:"The primary purpose of a tag line on a suspended load is to:",opts:["Add lifting capacity","Control the load's movement while keeping workers clear","Measure the weight","Replace the sling"],answer:1,why:"A tag line lets a worker guide and steady the load from a safe distance, rather than putting hands on a suspended load."},
+
+  /* Bearings & Lubrication */
+  {trade:"millwright",block:"Bearings & Lubrication",q:"A bearing showing blue/black discolouration most likely failed from:",opts:["Under-loading","Excessive heat (over-greasing, overload, or tight clearance)","Too little vibration","Correct alignment"],answer:1,why:"Bluish-black temper colours indicate the bearing ran hot — commonly from over-lubrication, overload, inadequate internal clearance, or lost lubrication."},
+  {trade:"millwright",block:"Bearings & Lubrication",q:"Grease incompatibility is determined mainly by differences in the:",opts:["Colour","Thickener type","Container size","Brand name"],answer:1,why:"Mixing greases with incompatible thickeners (e.g. lithium vs polyurea) can collapse the structure, causing it to soften, leak out, and lose protection."},
+  {trade:"millwright",block:"Bearings & Lubrication",q:"On a typical electric-motor bearing, the rotating inner ring is fitted to the shaft with a(n):",opts:["Loose clearance fit","Interference (press) fit","Threaded fit","Adhesive only"],answer:1,why:"The rotating ring takes an interference (press) fit so it won't creep on the shaft; the stationary outer ring gets a slip/transition fit in the housing."},
+  {trade:"millwright",block:"Bearings & Lubrication",q:"The preferred way to mount a medium/large bearing onto a shaft is to:",opts:["Hammer directly on the outer race","Heat the bearing (induction heater) to expand it","Force it cold with a chisel","Freeze the shaft only"],answer:1,why:"Heating the bearing expands the bore so it slides on, then shrinks to grip — far safer than hammering, which brinells the races and ruins the bearing."},
+  {trade:"millwright",block:"Bearings & Lubrication",q:"Which is NOT a function of a lubricant?",opts:["Reducing friction","Carrying away heat","Increasing the coefficient of friction","Sealing out contaminants"],answer:2,why:"Lubricants reduce friction, remove heat, resist corrosion, and help seal out dirt and moisture — they lower, never raise, friction."},
+  {trade:"millwright",block:"Bearings & Lubrication",q:"Over-greasing a sealed or shielded bearing typically causes:",opts:["Longer life","Heat build-up from churning and possible seal blow-out","Lower temperature","More clearance"],answer:1,why:"Packing too much grease makes the elements churn through it, generating heat and pressure that can rupture seals — more is not better."},
+  {trade:"millwright",block:"Bearings & Lubrication",q:"As oil temperature rises, its viscosity:",opts:["Increases","Decreases","Stays constant","Becomes solid"],answer:1,why:"Viscosity falls as temperature rises; the viscosity index (VI) rates how much an oil thins with heat — a higher VI thins less."},
+  {trade:"millwright",block:"Bearings & Lubrication",q:"The NLGI number on a grease specifies its:",opts:["Operating voltage","Consistency (firmness)","Colour","Flash point"],answer:1,why:"NLGI grades rank grease consistency from 000 (fluid) to 6 (block-hard); NLGI 2 is the common general-purpose firmness."},
+
+  /* Pumps & Drives */
+  {trade:"millwright",block:"Pumps & Drives",q:"Cavitation in a centrifugal pump is caused by:",opts:["Too much NPSH","Insufficient NPSH (suction pressure too low)","Over-lubrication","High discharge head only"],answer:1,why:"When available NPSH falls below required, liquid flashes to vapour at the impeller eye; the collapsing bubbles pit and erode the impeller and sound like gravel."},
+  {trade:"millwright",block:"Pumps & Drives",q:"Which pump type MUST have a relief valve in its discharge line?",opts:["Centrifugal pump","Positive-displacement pump","Neither","Only submersible pumps"],answer:1,why:"A positive-displacement pump moves a fixed volume each cycle; against a closed valve it will build pressure until something bursts, so a relief valve is mandatory."},
+  {trade:"millwright",block:"Pumps & Drives",q:"A centrifugal pump may be safely started against a closed discharge valve because:",opts:["It builds infinite pressure","It draws lowest power at shutoff and won't over-pressurize briefly","It cannot build any head","It needs no priming"],answer:1,why:"A centrifugal pump draws the least power at shutoff (closed valve) and self-limits its head, so a brief closed-valve start is acceptable — unlike a PD pump."},
+  {trade:"millwright",block:"Pumps & Drives",q:"A V-belt drive that is tensioned too tightly will most likely cause:",opts:["Belt slip","Premature bearing and shaft wear","Higher efficiency","Cooler running"],answer:1,why:"Over-tension overloads the shaft and bearings (and stretches belts); too loose lets belts slip, glaze, and overheat. Correct tension is a balance."},
+  {trade:"millwright",block:"Pumps & Drives",q:"Misaligned sheaves (pulleys) on a belt drive primarily cause:",opts:["Higher torque","Rapid belt and sheave wear plus noise","Increased ratio","Better grip"],answer:1,why:"Angular or parallel sheave misalignment runs the belt against the groove flanks, wearing belt and sheave quickly and throwing belts."},
+  {trade:"millwright",block:"Pumps & Drives",q:"A gear reducer with a 4:1 ratio driven at 1800 rpm produces an output speed of:",opts:["7200 rpm","450 rpm","1800 rpm","900 rpm"],answer:1,why:"Output speed = input ÷ ratio = 1800 ÷ 4 = 450 rpm, while output torque is multiplied roughly 4× (minus losses)."},
+  {trade:"millwright",block:"Pumps & Drives",q:"By the pump affinity laws, doubling a centrifugal pump's speed changes the head by a factor of about:",opts:["2","4","8","1"],answer:1,why:"Flow varies with speed, head with speed squared (2² = 4), and power with speed cubed (2³ = 8) — so head roughly quadruples."},
+  {trade:"millwright",block:"Pumps & Drives",q:"A flexible coupling between a motor and pump is used to:",opts:["Eliminate the need for alignment","Transmit torque while tolerating slight misalignment and damping shock","Increase speed","Act as a clutch"],answer:1,why:"Flexible couplings transmit torque and absorb minor residual misalignment and shock — but they do NOT remove the need for proper shaft alignment."},
+
+  /* Alignment */
+  {trade:"millwright",block:"Alignment",q:"Reverse-dial (and laser) shaft alignment corrects for:",opts:["Only parallel offset","Only angular misalignment","Both offset and angular misalignment","Belt tension"],answer:2,why:"Reverse-dial and laser methods resolve both parallel offset and angularity between two shafts in the vertical and horizontal planes."},
+  {trade:"millwright",block:"Alignment",q:"'Soft foot' is:",opts:["A worn coupling","A machine foot that doesn't sit flat, distorting the frame when bolted","A loose belt","A bent shaft"],answer:1,why:"Soft foot (a short, angled, or springy foot) distorts the machine housing and bearings when the hold-down is tightened, defeating any alignment — fix it first."},
+  {trade:"millwright",block:"Alignment",q:"In the rim-and-face dial method, the FACE reading indicates:",opts:["Parallel offset","Angular misalignment","Bearing wear","Belt tension"],answer:1,why:"The face (axial) reading shows angularity between shafts, while the rim (radial) reading shows parallel offset."},
+  {trade:"millwright",block:"Alignment",q:"'Bar sag' must be measured and compensated in dial alignment because it:",opts:["Has no effect","Causes a false reading as the mounting bracket droops under its own weight","Only affects laser tools","Increases accuracy"],answer:1,why:"The dial-indicator bracket sags under gravity as it rotates, adding a repeatable error to rim readings that must be measured and subtracted."},
+  {trade:"millwright",block:"Alignment",q:"A laser alignment system's main advantage over dial indicators is:",opts:["It needs no setup","No bar sag and faster, more accurate readings","It works without shafts","It eliminates shims"],answer:1,why:"Laser tools have no mechanical bracket sag, read directly, and compute moves quickly — reducing error and time versus dial indicators."},
+  {trade:"millwright",block:"Alignment",q:"When a machine runs much hotter than the driver, technicians often align it cold with a deliberate offset to allow for:",opts:["Bar sag","Thermal growth (expansion) at operating temperature","Belt stretch","Cavitation"],answer:1,why:"Hot machines grow; aligning cold with a calculated offset means the shafts come into true alignment once at operating temperature."},
+  {trade:"millwright",block:"Alignment",q:"Vertical alignment corrections on a motor are typically made using:",opts:["Jacking bolts only","Calibrated shims under the feet","Loosening the coupling","Adding grease"],answer:1,why:"Precision shims under the feet raise/lower the machine for vertical moves; horizontal moves use jacking bolts to slide it sideways."},
+  {trade:"millwright",block:"Alignment",q:"Allowable coupling misalignment tolerance generally becomes:",opts:["Looser at higher rpm","Tighter as shaft speed (rpm) increases","Irrelevant above 1000 rpm","The same at all speeds"],answer:1,why:"Higher rotational speed magnifies the vibration and bearing load from any misalignment, so acceptable tolerances tighten as rpm rises."},
+
+  /* Hydraulics & Pneumatics */
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"The component that converts fluid pressure into linear mechanical force is the:",opts:["Pump","Accumulator","Cylinder","Reservoir"],answer:2,why:"A hydraulic cylinder converts pressure and flow into linear motion and force, where force = pressure × piston area (F = P × A)."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"A hydraulic pressure-relief valve primarily provides:",opts:["Flow control","Overpressure protection","Directional control","Filtration"],answer:1,why:"The relief valve caps maximum system pressure, diverting flow back to tank above its setting to protect pumps, hoses, and actuators."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"By Pascal's law, pressure applied to a confined fluid is:",opts:["Concentrated at the inlet","Transmitted equally in all directions","Lost as heat only","Reduced with distance"],answer:1,why:"Pressure in a confined fluid acts equally in all directions and on all container surfaces — the basis of force multiplication (F = P × A)."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"In a hydraulic system, the pump actually produces:",opts:["Pressure directly","Flow — pressure results from resistance to that flow","Heat only","Vacuum at the outlet"],answer:1,why:"A pump creates flow; pressure only develops when that flow meets resistance (a load or restriction). No resistance, no pressure."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"A hydraulic accumulator is used to:",opts:["Filter the oil","Store energy and absorb shocks/pulsations","Increase reservoir size","Cool the fluid"],answer:1,why:"An accumulator stores pressurized fluid (often against gas or a spring) to supply peak demand, hold pressure, and dampen pulsations or shock."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"Hydraulics is preferred over pneumatics for precise positioning mainly because:",opts:["Air is cheaper","Oil is nearly incompressible while air compresses","Air has no pressure","Oil is lighter"],answer:1,why:"Nearly incompressible oil holds position rigidly under load; compressible air springs and creeps, making pneumatics poor for precise, heavy positioning."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"On a pneumatic system, an FRL unit consists of a:",opts:["Fan, regulator, lever","Filter, regulator, lubricator","Float, relay, latch","Fuse, resistor, load"],answer:1,why:"The FRL conditions shop air: the Filter removes contaminants, the Regulator sets pressure, and the Lubricator adds a fine oil mist for the tools/valves."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"The single largest cause of hydraulic system failures is:",opts:["Low oil colour","Fluid contamination","Too much filtration","Cold weather"],answer:1,why:"Particle and water contamination causes the majority of hydraulic failures — which is why filtration (micron rating) and clean fill practices are critical."},
+  {trade:"millwright",block:"Hydraulics & Pneumatics",q:"A 4-way, 3-position directional control valve in a cylinder circuit is used to:",opts:["Filter return oil","Extend, retract, and hold/center the cylinder","Set system pressure","Store energy"],answer:1,why:"A 4-way valve ports pressure and tank to the two cylinder lines to extend or retract it; the third (center) position holds or floats the actuator."},
+
+  /* ---- Welder (456A) ---- */
+  /* Safety & Setup */
+  {trade:"welder",block:"Safety & Setup",q:"The correct filter-lens shade for most SMAW (stick) welding is approximately:",opts:["Shade 3–4","Shade 5–6","Shade 10–13","No filter needed"],answer:2,why:"Arc welding requires roughly shade 10–13 depending on amperage to protect the eyes from intense UV and infrared radiation."},
+  {trade:"welder",block:"Safety & Setup",q:"Compressed-gas cylinders must be stored:",opts:["On their side, uncapped","Upright, secured by chain, with valve caps on when not in use","Near oil and grease","In a sealed cabinet with no ventilation"],answer:1,why:"Cylinders are stored upright and chained to prevent tipping, with protective caps on; oxygen must be kept well away from oil, grease, and fuel gases."},
+  {trade:"welder",block:"Safety & Setup",q:"Why must oxygen cylinders and fittings be kept free of oil and grease?",opts:["It looks unprofessional","Oil/grease can ignite explosively in high-pressure oxygen","It voids the warranty","It makes them heavier"],answer:1,why:"Oil and grease can spontaneously ignite or explode in the presence of high-pressure oxygen — a serious and well-documented hazard."},
+  {trade:"welder",block:"Safety & Setup",q:"A flashback arrestor is installed on an oxy-fuel set to:",opts:["Increase flame temperature","Stop a flame from travelling back into the hose/regulator","Mix the gases","Reduce gas use"],answer:1,why:"A flashback arrestor halts a flame that burns back up the hose, preventing it from reaching the regulator or cylinder and causing an explosion."},
+  {trade:"welder",block:"Safety & Setup",q:"After completing hot work in an area with combustibles, a fire watch should be maintained for at least:",opts:["1 minute","5 minutes","30 minutes","No fire watch needed"],answer:2,why:"A fire watch of at least 30 minutes (often 60) after hot work catches smouldering fires from sparks and slag that can ignite long after welding stops."},
+  {trade:"welder",block:"Safety & Setup",q:"Welding on galvanized (zinc-coated) steel without proper ventilation can cause:",opts:["Better penetration","Metal-fume fever from zinc oxide fumes","A stronger weld","No health effect"],answer:1,why:"Heating zinc releases zinc-oxide fumes that cause metal-fume fever (flu-like symptoms); remove coating where possible and use ventilation or respiratory protection."},
+  {trade:"welder",block:"Safety & Setup",q:"To protect a machine's bearings from arc damage, the work (ground) clamp should be:",opts:["As far from the weld as possible","Connected as close to the weld as practical","Clamped to a bearing housing","Left disconnected"],answer:1,why:"Placing the work lead close to the weld keeps welding current from finding a return path through bearings or gears, which arcing would pit and ruin."},
+  {trade:"welder",block:"Safety & Setup",q:"Before entering a confined space to weld, the FIRST requirement is to:",opts:["Purge it with pure oxygen","Test the atmosphere and ventilate","Light the torch to check air","Seal all openings"],answer:1,why:"The atmosphere must be tested (oxygen level, flammables, toxics) and the space ventilated. Never ventilate with oxygen — it creates an explosive, oxygen-enriched atmosphere."},
+
+  /* Metallurgy */
+  {trade:"welder",block:"Metallurgy",q:"Preheating thick or high-carbon steel before welding mainly:",opts:["Increases spatter","Slows the cooling rate to reduce cracking","Lowers penetration","Removes the need for filler"],answer:1,why:"Preheat slows cooling, reducing hard, brittle martensite in the heat-affected zone and allowing absorbed hydrogen to escape — lowering crack risk."},
+  {trade:"welder",block:"Metallurgy",q:"The heat-affected zone (HAZ) of a weld is:",opts:["The deposited filler metal","The base metal whose properties were altered by welding heat","The slag layer","The shielding gas envelope"],answer:1,why:"The HAZ is the base metal adjacent to the weld that did not melt but was metallurgically changed by the thermal cycle — often the most crack-prone region."},
+  {trade:"welder",block:"Metallurgy",q:"A higher carbon equivalent (CE) in a steel means it is:",opts:["Easier to weld with no precautions","More hardenable and more prone to cracking","Softer when welded","Non-weldable entirely"],answer:1,why:"A higher CE raises hardenability, making the HAZ more likely to form brittle martensite — so higher-CE steels need preheat and low-hydrogen processes."},
+  {trade:"welder",block:"Metallurgy",q:"Hydrogen-induced (cold) cracking requires hydrogen, tensile stress, a susceptible microstructure, and:",opts:["High preheat","Lower temperatures (it can appear hours after welding)","Pure argon","A short arc"],answer:1,why:"Cold cracking develops as the weld cools (often delayed hours), which is why low-hydrogen electrodes, preheat, and proper storage are used to prevent it."},
+  {trade:"welder",block:"Metallurgy",q:"A common way to control distortion when welding is to:",opts:["Use one long continuous pass quickly","Use balanced welding, back-step, or tack sequencing","Skip all tack welds","Maximize heat input"],answer:1,why:"Balancing welds about the neutral axis, back-step welding, and good tacking distribute and offset shrinkage forces that otherwise warp the work."},
+  {trade:"welder",block:"Metallurgy",q:"Austenitic stainless steel distorts more than mild steel during welding mainly because it has:",opts:["Lower melting point","Higher thermal expansion and lower conductivity","No HAZ","Higher carbon"],answer:1,why:"Austenitic stainless expands more and conducts heat away more slowly, concentrating heat and producing greater distortion — manage with lower heat input and fixturing."},
+  {trade:"welder",block:"Metallurgy",q:"Post-weld stress relief (a controlled reheat) is performed to:",opts:["Add carbon","Reduce residual stresses and lower cracking/distortion risk","Increase hydrogen","Remove the weld"],answer:1,why:"A controlled post-weld heat treatment relaxes locked-in residual stresses from welding, improving toughness and reducing the chance of cracking or distortion in service."},
+  {trade:"welder",block:"Metallurgy",q:"Rapid quenching of a hardenable steel weld tends to form:",opts:["Soft, ductile ferrite","Hard, brittle martensite","Pure austenite","Slag"],answer:1,why:"Fast cooling transforms austenite into hard, brittle martensite, which is prone to cracking — the reason preheat and controlled cooling are used."},
+
+  /* SMAW */
+  {trade:"welder",block:"SMAW",q:"An E7018 electrode is classified as:",opts:["Cellulosic, fast-freeze","Low-hydrogen, all-position","Stainless only","Aluminum only"],answer:1,why:"E7018 is a low-hydrogen iron-powder electrode (70 ksi, all positions) prized for ductile, crack-resistant welds on higher-strength and restrained joints."},
+  {trade:"welder",block:"SMAW",q:"In the classification E7018, the '70' indicates:",opts:["70% iron powder","70,000 psi minimum tensile strength","70 amps","7th revision"],answer:1,why:"The first two digits give the minimum tensile strength of the deposited weld metal in thousands of psi — here 70,000 psi."},
+  {trade:"welder",block:"SMAW",q:"In E7018, the '1' (third digit) denotes:",opts:["1% carbon","All-position capability","One pass only","100 amps"],answer:1,why:"The third digit '1' denotes all-position welding (flat, horizontal, vertical, and overhead)."},
+  {trade:"welder",block:"SMAW",q:"Low-hydrogen electrodes such as E7018 should be stored in:",opts:["A bucket of water","A heated rod oven to keep them dry","A freezer","The open shop air"],answer:1,why:"E7018 coatings absorb atmospheric moisture, reintroducing hydrogen and risking cracking; they are kept in a heated rod oven and used promptly once removed."},
+  {trade:"welder",block:"SMAW",q:"E7018 is normally run on:",opts:["DCEN (straight polarity)","DCEP (reverse polarity) or AC","AC only at low amps","No current"],answer:1,why:"E7018 is typically run on DCEP (electrode positive) or AC, giving stable arc characteristics and good fusion for low-hydrogen deposits."},
+  {trade:"welder",block:"SMAW",q:"An arc held too long (excessive arc length) in SMAW typically causes:",opts:["Deeper, cleaner penetration","Spatter, porosity, and undercut","No effect","Less heat"],answer:1,why:"Too long an arc loses shielding and stability, producing spatter, porosity, undercut, and a wide weak bead. Maintain an arc length roughly equal to the electrode diameter."},
+  {trade:"welder",block:"SMAW",q:"E6010 electrodes are known for:",opts:["Low penetration on aluminum","Deep penetration and digging arc (DCEP), good for pipe root passes","No slag","AC-only use"],answer:1,why:"E6010 is a cellulosic, fast-freeze electrode with a deep, digging arc on DCEP — widely used for open-root passes on pipe."},
+  {trade:"welder",block:"SMAW",q:"In SMAW, the usual technique is to:",opts:["Push (forehand) the electrode","Drag (backhand) the electrode at a slight angle","Hold it perpendicular and still","Whip it in circles always"],answer:1,why:"Stick welding generally uses a drag (backhand) technique with a slight travel angle, keeping slag behind the pool for good fusion and bead shape."},
+
+  /* GMAW/FCAW */
+  {trade:"welder",block:"GMAW/FCAW",q:"Shielding gas in GMAW primarily serves to:",opts:["Cool the workpiece","Protect the molten pool from the atmosphere","Add carbon","Increase travel speed only"],answer:1,why:"The shielding gas displaces air, protecting the weld pool from oxygen and nitrogen that would otherwise cause porosity and embrittlement."},
+  {trade:"welder",block:"GMAW/FCAW",q:"Excessive porosity in a GMAW weld is most commonly caused by:",opts:["Too low travel speed","Loss of shielding gas or surface contamination","Too short an arc","Excess preheat"],answer:1,why:"Porosity usually results from inadequate shielding (wind, low flow, leaks) or contamination such as oil, rust, paint, or moisture on the base metal."},
+  {trade:"welder",block:"GMAW/FCAW",q:"A common shielding gas for short-circuit GMAW on mild steel is:",opts:["100% argon","75% argon / 25% CO2","Pure helium","Pure oxygen"],answer:1,why:"A 75/25 argon–CO2 blend gives a stable short-circuit arc with good wetting and limited spatter on carbon steel; 100% argon alone suits aluminum, not steel."},
+  {trade:"welder",block:"GMAW/FCAW",q:"In GMAW, spray transfer (versus short-circuit) generally requires:",opts:["Low voltage and CO2-rich gas","Higher voltage/current with an argon-rich gas","No shielding gas","Vertical-down only"],answer:1,why:"Spray transfer needs higher voltage/current and an argon-rich gas to project fine droplets across the arc — giving high deposition, best in flat/horizontal positions."},
+  {trade:"welder",block:"GMAW/FCAW",q:"Self-shielded FCAW (FCAW-S) differs from GMAW in that it:",opts:["Needs more external gas","Generates its own shielding from the flux core (no external gas)","Cannot weld steel","Uses solid wire"],answer:1,why:"Self-shielded flux-cored wire produces shielding gas and slag from its core, so no external gas is needed — useful outdoors where wind would disrupt a gas shield."},
+  {trade:"welder",block:"GMAW/FCAW",q:"Increasing the electrode stick-out (electrode extension) in GMAW generally:",opts:["Increases current","Decreases current and penetration (more preheating of the wire)","Has no effect","Stops the arc"],answer:1,why:"Longer stick-out adds resistance heating to the wire, lowering the actual welding current and penetration while raising deposition slightly — a key parameter to control."},
+  {trade:"welder",block:"GMAW/FCAW",q:"GMAW is most often run on:",opts:["DCEN (straight polarity)","DCEP (reverse polarity)","AC square wave","No polarity"],answer:1,why:"Standard GMAW uses DCEP (electrode positive) for a stable arc and good penetration; DCEN is rare and used only for specific applications."},
+  {trade:"welder",block:"GMAW/FCAW",q:"In gas-shielded FCAW, the slag produced primarily:",opts:["Adds nothing","Shields and shapes the cooling weld and must be chipped between passes","Replaces filler metal","Cools the gun"],answer:1,why:"The flux forms a slag that protects and shapes the solidifying bead; like SMAW, it must be removed between passes to avoid slag inclusions."},
+
+  /* Symbols & Inspection */
+  {trade:"welder",block:"Symbols & Inspection",q:"On a welding symbol, information placed below the reference line refers to the:",opts:["Other (far) side","Arrow side","Field weld only","Weld-all-around"],answer:1,why:"By AWS convention, a symbol below the reference line applies to the arrow side of the joint; above the line is the other side."},
+  {trade:"welder",block:"Symbols & Inspection",q:"On a fillet weld symbol, the weld size is shown:",opts:["To the right of the symbol","To the left of the weld symbol","Inside the arrow","Above the tail"],answer:1,why:"The leg size of a fillet weld is placed to the left of the fillet (triangle) symbol; length is shown to the right."},
+  {trade:"welder",block:"Symbols & Inspection",q:"A small circle at the junction (elbow) of the arrow and reference line means:",opts:["Field weld","Weld all around the joint","Flush contour","Tail reference"],answer:1,why:"A circle at the elbow is the 'weld-all-around' symbol, indicating the weld continues completely around the joint."},
+  {trade:"welder",block:"Symbols & Inspection",q:"A flag at the junction of a welding symbol indicates a:",opts:["Shop weld","Field (site) weld","Tack weld only","Weld all around"],answer:1,why:"The flag denotes a field weld — one made on site during erection rather than in the shop."},
+  {trade:"welder",block:"Symbols & Inspection",q:"Which NDT method detects internal (subsurface) volumetric defects?",opts:["Visual inspection","Dye-penetrant testing","Radiographic (X-ray) or ultrasonic testing","Soap-bubble test"],answer:2,why:"Radiographic and ultrasonic testing reveal internal flaws like slag, porosity, and incomplete fusion; visual and dye-penetrant only find surface-breaking defects."},
+  {trade:"welder",block:"Symbols & Inspection",q:"Dye-penetrant testing (PT) is limited to detecting:",opts:["Deep internal cracks","Surface-breaking defects only","Defects in any material at any depth","Distortion"],answer:1,why:"Penetrant testing relies on liquid wicking into flaws open to the surface, so it finds only surface-breaking discontinuities — on both magnetic and non-magnetic materials."},
+  {trade:"welder",block:"Symbols & Inspection",q:"Undercut along the edge of a weld is usually caused by:",opts:["Too low current and slow travel","Excessive current/arc length or incorrect angle","Too much preheat","Short stick-out"],answer:1,why:"Undercut — a groove melted into the base metal at the weld toe — comes from excessive current, too long an arc, or a poor work angle, leaving a stress-raising notch."},
+  {trade:"welder",block:"Symbols & Inspection",q:"On a fillet weld, the 'throat' is:",opts:["The visible face width","The shortest distance from the root to the weld face","The leg length","The reinforcement height"],answer:1,why:"The (theoretical) throat is the shortest distance from the joint root to the hypotenuse of the fillet — it governs the weld's load-carrying strength."},
+
+  /* ---- Plumber (306A) — grounded in National Plumbing Code of Canada 2020 ---- */
+  /* Safety & Code */
+  {trade:"plumber",block:"Safety & Code",q:"A device or method that prevents the reversal of normal flow into the potable supply is a:",opts:["Cleanout","Backflow preventer","P-trap","Air admittance valve"],answer:1,why:"Per the NPC, a backflow preventer (e.g. reduced-pressure assembly, double check) stops backflow from a cross-connection into potable water."},
+  {trade:"plumber",block:"Safety & Code",q:"Back-siphonage is backflow caused by:",opts:["Pressure higher than supply","Negative (below-atmospheric) pressure in the supply system","A blocked vent","Excess slope"],answer:1,why:"The NPC defines back-siphonage as backflow due to negative pressure in the supply system — e.g. a main break drawing water back through a submerged outlet."},
+  {trade:"plumber",block:"Safety & Code",q:"An 'air gap' is defined as the unobstructed vertical distance through air between:",opts:["Two vent terminals","A water supply outlet and the flood level rim of the fixture","The trap dip and trap weir","Two cleanouts"],answer:1,why:"An air gap is the vertical air space between a supply outlet and the flood level rim below it; it is the most positive means of preventing back-siphonage."},
+  {trade:"plumber",block:"Safety & Code",q:"For a high-hazard (severe) cross-connection, the highest level of protection is provided by a:",opts:["Single check valve","Reduced-pressure principle (RP) backflow preventer","Hose bibb cap","Air admittance valve"],answer:1,why:"The reduced-pressure principle assembly (two check valves plus a relief port) gives the highest protection and is required for severe-hazard cross-connections."},
+  {trade:"plumber",block:"Safety & Code",q:"A cross-connection is:",opts:["A 45° fitting","Any actual or potential connection between potable water and a non-potable source","A vent-to-drain tie","A union of two copper pipes"],answer:1,why:"A cross-connection is any link through which non-potable water or substances could enter the potable supply — the hazard backflow prevention is designed to stop."},
+  {trade:"plumber",block:"Safety & Code",q:"Drainage and venting rough-in work should be inspected and pressure/water tested:",opts:["After the walls are closed","Before it is concealed (covered)","Only if it leaks","Never"],answer:1,why:"Rough-in DWV must be tested and inspected while still exposed, so leaks and defects are found and corrected before being concealed in walls or floors."},
+  {trade:"plumber",block:"Safety & Code",q:"When working in a trench deeper than about 1.2 m, the key safety control is:",opts:["Working faster","Proper shoring, sloping, or a trench box to prevent cave-in","Wearing only gloves","Leaving spoil at the edge"],answer:1,why:"Trench collapse is a leading cause of excavation fatalities; protective systems (shoring, sloping, shielding) are required and spoil must be set back from the edge."},
+  {trade:"plumber",block:"Safety & Code",q:"Pipe and fittings used for potable water must be:",opts:["Any available material","Certified for potable use and low-lead/lead-free","Galvanized only","Painted blue"],answer:1,why:"Potable-water components must be certified to the applicable CSA/NSF standards and meet lead-content limits to protect drinking-water quality."},
+
+  /* Drainage (DWV) */
+  {trade:"plumber",block:"Drainage (DWV)",q:"The primary purpose of a P-trap under a fixture is to:",opts:["Slow drainage","Hold a water seal that blocks sewer gas","Filter debris","Reduce noise"],answer:1,why:"The trap retains a water seal that prevents sewer gases from entering the building through the fixture outlet."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"Per NPC 2.2.3.1, the minimum trap seal depth for a standard trap is:",opts:["25 mm","38 mm","50 mm","75 mm"],answer:1,why:"NPC Sentence 2.2.3.1.(1) requires a trap seal depth of not less than 38 mm; the water seal must not depend on moving parts."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"Per NPC, the minimum trap seal depth on a fixture draining to an acid waste system is:",opts:["38 mm","50 mm","75 mm","100 mm"],answer:1,why:"NPC Sentence 2.2.3.1.(2) increases the minimum trap seal depth to 50 mm for fixtures draining to an acid waste system."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"Per NPC, the minimum slope for a horizontal drainage pipe NPS 3 or smaller is:",opts:["1 in 25","1 in 50","1 in 100","1 in 200"],answer:1,why:"Smaller drains (NPS 3 and under) require a minimum slope of 1 in 50 (≈2%, about 1/4 in per foot) to keep solids moving with the flow."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"Per NPC, drainage pipes larger than NPS 4 are permitted to slope as little as:",opts:["1 in 25","1 in 50","1 in 100","1 in 10"],answer:2,why:"The NPC permits slopes down to 1 in 100 (1%) for pipes over NPS 4, though steeper is encouraged where practical to keep solids moving."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"An S-trap is generally prohibited because it:",opts:["Is too expensive","Tends to self-siphon and lose its water seal","Cannot fit under a sink","Has no water seal at all"],answer:1,why:"An S-trap discharges vertically and can siphon its own seal as the fixture drains, leaving the trap dry and open to sewer gas — a P-trap with proper venting is required."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"In the NPC, drainage pipe sizing is based on 'hydraulic load' expressed in:",opts:["Litres per minute only","Fixture units","Pipe diameter only","Slope ratio"],answer:1,why:"Sanitary drainage is sized by fixture units — a value representing each fixture's probable discharge load — read against pipe size and slope in the NPC tables (2.4.10)."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"A cleanout is provided in a drainage system to:",opts:["Vent sewer gas","Give access for cleaning and inspection (clearing blockages)","Supply water","Trap solids"],answer:1,why:"Cleanouts provide access to clear and inspect drains; the NPC requires them at the base of stacks, at certain changes in direction, and at intervals on long runs."},
+  {trade:"plumber",block:"Drainage (DWV)",q:"A trap's water seal must:",opts:["Depend on a moving float","Not depend on the action of moving parts","Be at least 100 mm deep","Be vented by the supply"],answer:1,why:"NPC 2.2.3.1 requires the seal to hold by water alone (no moving parts) and to be built so that seal-wall failure causes visible exterior leakage."},
+
+  /* Water Supply */
+  {trade:"plumber",block:"Water Supply",q:"Water hammer is best controlled by installing a(n):",opts:["Larger trap","Water hammer arrester (air chamber)","Cleanout","Larger vent"],answer:1,why:"Water hammer arresters (per NPC 2.2.10.15, conforming to ANSI/ASSE 1010) absorb the pressure surge from fast-closing valves, preventing shock and banging pipes."},
+  {trade:"plumber",block:"Water Supply",q:"Water hammer (the banging in pipes) is caused by:",opts:["Slow, gradual valve opening","The momentum of moving water stopped suddenly by a fast-closing valve","Air in the vent","Too little pressure"],answer:1,why:"When a quick-closing valve (e.g. a solenoid or single-lever faucet) stops flowing water abruptly, the momentum creates a pressure spike that shocks the piping."},
+  {trade:"plumber",block:"Water Supply",q:"To protect against scalding, a shower must be supplied through a:",opts:["Single check valve","Pressure-balancing or thermostatic mixing valve","Gate valve","Vacuum breaker"],answer:1,why:"NPC 2.2.10.7 requires temperature-control valves (conforming to ASSE 1016) so a drop in cold supply doesn't let the shower spike to a scalding temperature."},
+  {trade:"plumber",block:"Water Supply",q:"Where static water supply pressure is excessive (above ~550 kPa / 80 psi), the NPC requires a:",opts:["Larger water heater","Pressure-reducing valve","Second meter","Bigger trap"],answer:1,why:"High static pressure stresses fittings and causes leaks and noise, so a pressure-reducing valve is installed to bring it within the allowable range."},
+  {trade:"plumber",block:"Water Supply",q:"A key advantage of PEX tubing over rigid copper is that it:",opts:["Conducts electricity","Is flexible, resists freeze-bursting, and needs fewer fittings","Cannot carry hot water","Must be soldered"],answer:1,why:"Cross-linked polyethylene (PEX) is flexible (fewer joints, easier routing), more tolerant of freezing, and corrosion-free — though it must be protected from UV and certain contaminants."},
+  {trade:"plumber",block:"Water Supply",q:"Where dissimilar metals (e.g. copper and steel) are joined in a water line, you should use a:",opts:["Direct threaded joint","Dielectric union to prevent galvanic corrosion","Compression of the steel","Lead solder"],answer:1,why:"Dissimilar metals in contact with water form a galvanic cell that corrodes the more active metal; a dielectric union isolates them to prevent this."},
+  {trade:"plumber",block:"Water Supply",q:"A hose-connection (hose bibb) vacuum breaker is fitted to an outdoor tap to:",opts:["Boost pressure","Prevent back-siphonage through a connected hose","Reduce water hammer","Heat the line"],answer:1,why:"A hose left submerged (e.g. in a bucket or pool) is a cross-connection; the vacuum breaker admits air to prevent back-siphonage of non-potable water into the supply."},
+  {trade:"plumber",block:"Water Supply",q:"The water service pipe to a typical single dwelling is generally not smaller than:",opts:["NPS 1/4","NPS 3/8","NPS 3/4","NPS 4"],answer:2,why:"A single dwelling's water service is generally at least NPS 3/4 (19 mm) so it can carry the demand of the home's fixtures at adequate pressure."},
+
+  /* Venting */
+  {trade:"plumber",block:"Venting",q:"The main function of a plumbing vent is to:",opts:["Supply hot water","Equalize pressure in the drainage system so trap seals aren't lost","Drain solids","Heat the building"],answer:1,why:"Vents admit air to balance pressure in the DWV system, preventing siphonage or back-pressure that would otherwise break the trap seals."},
+  {trade:"plumber",block:"Venting",q:"Per NPC 2.2.10.16, an air admittance valve (AAV) is a one-way device that:",opts:["Lets sewer gas escape outdoors","Allows air in but seals against gas/air escaping out","Replaces all required venting","Supplies water to the trap"],answer:1,why:"An AAV (conforming to ASSE 1051) opens to admit air under negative pressure and seals shut otherwise, protecting trap seals where running a vent to outside air is impractical."},
+  {trade:"plumber",block:"Venting",q:"Per the NPC, the 'trap arm' is the portion of a fixture drain between the:",opts:["Stack and the sewer","Trap weir and the vent pipe fitting","Two cleanouts","Flood rim and the trap dip"],answer:1,why:"The NPC defines the trap arm as the part of the fixture drain from the trap weir to the vent pipe fitting — its length and slope are limited so the trap won't self-siphon."},
+  {trade:"plumber",block:"Venting",q:"A 'wet vent' is a pipe that:",opts:["Carries only air","Serves as both a vent and a drain for fixtures","Is always horizontal","Supplies cold water"],answer:1,why:"A wet vent carries drainage from some fixtures while also venting others — permitted under specific NPC arrangements that keep adequate air movement."},
+  {trade:"plumber",block:"Venting",q:"A venting system is defined as an assembly of pipes/fittings that connects the drainage system with:",opts:["The water service","Outside air, to circulate air and protect trap seals","The storm sewer only","The gas line"],answer:1,why:"Per the NPC, the venting system connects the drainage system to outside air for air circulation and protection of trap seals."},
+  {trade:"plumber",block:"Venting",q:"Without adequate venting, the rush of water draining a fixture can:",opts:["Improve the seal","Siphon the trap seal out, letting sewer gas in","Increase water pressure","Clean the vent"],answer:1,why:"Fast drainage creates negative pressure that pulls (self-siphons) the water out of an unvented trap, breaking the seal and admitting sewer gas to the room."},
+  {trade:"plumber",block:"Venting",q:"The difference between a 'stack vent' and a 'vent stack' is that a stack vent is:",opts:["A horizontal drain","The extension of a soil/waste stack above the highest fixture connection","A water supply riser","A type of trap"],answer:1,why:"A stack vent is the dry extension of a soil-or-waste stack above its top fixture branch; a vent stack is a separate vertical vent that connects at its base to the drainage stack."},
+  {trade:"plumber",block:"Venting",q:"A vent terminal through a roof must:",opts:["Be capped airtight","Terminate in open air, clear of and away from windows/air intakes","Connect to the leader","Discharge into the attic"],answer:1,why:"Vent terminals must open to outside air and be located (per NPC 2.5.6) away from and above windows, doors, and air intakes so sewer gases disperse safely."},
+
+  /* Fixtures & Gas */
+  {trade:"plumber",block:"Fixtures & Gas",q:"Gas-rated joint sealant (pipe dope) on a threaded gas line should be applied to:",opts:["Both internal and external threads","The male (external) threads only","The female threads only","Neither — water tape is fine"],answer:1,why:"Sealant goes on the male threads so it isn't pushed into and contaminating the line; only sealant/tape rated for gas (e.g. yellow PTFE) may be used."},
+  {trade:"plumber",block:"Fixtures & Gas",q:"The 'flood level rim' of a fixture is:",opts:["The base of the trap","The top edge from which water would overflow","The supply stop","The vent opening"],answer:1,why:"The flood level rim is the edge over which water overflows; supply outlets and air gaps are referenced to it because backflow risk relates to a submerged outlet below this level."},
+  {trade:"plumber",block:"Fixtures & Gas",q:"Per the NPC, a water closet installed in a washroom for public use shall have:",opts:["A round bowl and closed seat","An elongated bowl and an open-front seat","No seat","A wall-hung tank only"],answer:1,why:"NPC 2.2.2 requires public water closets to be the elongated type with an open-front seat for hygiene."},
+  {trade:"plumber",block:"Fixtures & Gas",q:"A floor drain that is used only occasionally may lose its seal by evaporation; this is prevented with a:",opts:["Larger trap","Trap seal primer that periodically adds water","Bigger vent","Second cleanout"],answer:1,why:"A trap-seal primer feeds a small amount of water to a seldom-used trap (like a floor drain) so the seal doesn't evaporate and let sewer gas in."},
+  {trade:"plumber",block:"Fixtures & Gas",q:"Each fixture supply should be provided with a(n):",opts:["Air admittance valve","Individual shut-off (stop) valve","Backwater valve","Cleanout"],answer:1,why:"An individual stop at each fixture lets it be isolated for service without shutting off water to the whole building."},
+  {trade:"plumber",block:"Fixtures & Gas",q:"A gas-fired appliance such as a water heater requires:",opts:["No air supply","Adequate combustion/ventilation air and proper venting of flue gases","Only an electrical connection","A water seal trap on the flue"],answer:1,why:"Fuel-burning appliances need sufficient combustion air and a code-compliant vent to carry away flue gases (including carbon monoxide) safely."},
+  {trade:"plumber",block:"Fixtures & Gas",q:"A backwater valve is installed on a building drain to:",opts:["Boost flow","Prevent sewage from backing up into the building during a main surcharge","Vent the stack","Mix hot and cold water"],answer:1,why:"A backwater (backflow) valve on the drain closes against reverse flow, protecting low fixtures from sewage backup when the municipal sewer surcharges."}
+];
+
+function trades(){return Object.keys(TRADES);}
+function allQuestions(){return QUESTIONS.concat((DB&&DB.customQuestions)||[]);}
+function questionsFor(tradeKey){return allQuestions().filter(q=>q.trade===tradeKey);}
+
+/* ============================================================
+   2. STORE  (localStorage-backed app state)
+   ============================================================ */
+const KEY="rsr_toolkit_v1";
+let DB = load();
+function load(){
+  try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.clients){if(!r.customQuestions)r.customQuestions=[];return r;}}catch(e){}
+  return {clients:[], seq:1, customQuestions:[]};
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
+function uid(){return "c"+(DB.seq++)+Date.now().toString(36);}
+function getClient(id){return DB.clients.find(c=>c.id===id);}
+
+/* a client record:
+   {id,name,trade,examDate,created,
+    intake:{confidence:{block:1-5}, diagnostic:{score,total,byBlock}, notes, readiness},
+    exams:[{date,trade,score,total,pct,byBlock,minutes}],
+    plan:{trade,examDate,hoursPerWeek,weeks:[{tasks:[{label,block,done}]}]},
+    sessions:[{date,note,hours}] }
+*/
+function newClient(name,trade,examDate){
+  const c={id:uid(),name:name.trim(),trade,examDate,created:today(),
+    intake:null,exams:[],plan:null,sessions:[]};
+  DB.clients.push(c);save();return c;
+}
+// Find an existing client matching name (case/space-insensitive) + trade — used to
+// avoid creating duplicate client files for the same person.
+function findClientByNameTrade(name,trade){
+  const norm=s=>(s||"").trim().toLowerCase().replace(/\s+/g," ");
+  const n=norm(name);
+  if(!n)return null;
+  return DB.clients.find(c=>norm(c.name)===n && c.trade===trade)||null;
+}
+// Groups of existing clients that look like the same person (same name+trade).
+function duplicateGroups(){
+  const norm=s=>(s||"").trim().toLowerCase().replace(/\s+/g," ");
+  const map={};
+  DB.clients.forEach(c=>{const k=norm(c.name)+"|"+c.trade;(map[k]=map[k]||[]).push(c);});
+  return Object.values(map).filter(g=>g.length>1);
+}
+// Merge a set of duplicate client records into one, preserving all history.
+function mergeClients(ids){
+  const group=ids.map(getClient).filter(Boolean);
+  if(group.length<2)return null;
+  group.sort((a,b)=>(a.created||"").localeCompare(b.created||"")); // oldest = primary
+  const primary=group[0];
+  group.slice(1).forEach(o=>{
+    primary.exams=(primary.exams||[]).concat(o.exams||[]);
+    primary.sessions=(primary.sessions||[]).concat(o.sessions||[]);
+    if(o.intake&&(!primary.intake||(o.intake.date||"")>(primary.intake.date||"")))primary.intake=o.intake;
+    if(o.plan&&(!primary.plan||(o.plan.created||"")>(primary.plan.created||"")))primary.plan=o.plan;
+    if(o.examDate&&(!primary.examDate||o.examDate>primary.examDate))primary.examDate=o.examDate;
+  });
+  primary.exams.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  primary.sessions.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const remove=new Set(group.slice(1).map(o=>o.id));
+  DB.clients=DB.clients.filter(c=>!remove.has(c.id));
+  save();
+  return primary;
+}
+
+/* ============================================================
+   3. HELPERS
+   ============================================================ */
+const $=(s,el=document)=>el.querySelector(s);
+const $$=(s,el=document)=>[...el.querySelectorAll(s)];
+function el(html){const t=document.createElement("template");t.innerHTML=html.trim();return t.content.firstChild;}
+function esc(s){return (s==null?"":""+s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function today(){return new Date().toISOString().slice(0,10);}
+function fmtDate(d){if(!d)return "—";const x=new Date(d+"T00:00:00");return x.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
+function daysUntil(d){if(!d)return null;const ms=new Date(d+"T00:00:00")-new Date(today()+"T00:00:00");return Math.round(ms/864e5);}
+function pctClass(p){return p>=PASS?"green":p>=PASS-12?"amber":"red";}
+function readyLabel(p){if(p==null)return{t:"Not assessed",c:""};if(p>=PASS)return{t:"Exam-ready",c:"green"};if(p>=PASS-12)return{t:"Close — keep pushing",c:"amber"};return{t:"Needs work",c:"red"};}
+let toastT;
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2200);}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+/* ============================================================
+   4. ROUTER
+   ============================================================ */
+const VIEWS={};
+let STATE={view:"dashboard",params:{}};
+function go(view,params={}){STATE={view,params};render();window.scrollTo(0,0);}
+function render(){
+  $$("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.view===STATE.view));
+  const main=$("#main");main.innerHTML="";
+  (VIEWS[STATE.view]||VIEWS.dashboard)(main,STATE.params);
+}
+$("#nav").addEventListener("click",e=>{const b=e.target.closest("button");if(b)go(b.dataset.view);});
+
+/* ============================================================
+   5. DASHBOARD  (coach overview + data tools)
+   ============================================================ */
+VIEWS.dashboard=function(root){
+  const cs=DB.clients;
+  const examsAll=cs.flatMap(c=>c.exams.map(e=>({...e,client:c.name})));
+  const ready=cs.filter(c=>readiness(c)>=PASS).length;
+  const upcoming=cs.filter(c=>{const d=daysUntil(c.examDate);return d!=null&&d>=0&&d<=30;}).length;
+  const avg=examsAll.length?Math.round(examsAll.reduce((a,e)=>a+e.pct,0)/examsAll.length):null;
+
+  root.append(el(`<div class="page-head spread">
+    <div><div class="kicker">Coach Dashboard</div><h1>The whole roster, at a glance</h1>
+    <p class="muted">Every client, their readiness, and what's coming up. Click anyone to open their full file.</p></div>
+    <div class="row">
+      <button class="btn" id="exp">⭳ Export</button>
+      <button class="btn" id="imp">⭱ Import</button>
+      <button class="btn primary" id="add">＋ New client</button>
+    </div>
+  </div>`));
+
+  const stats=el(`<div class="grid g4" style="margin-bottom:22px"></div>`);
+  stats.append(
+    el(`<div class="stat"><div class="n">${cs.length}</div><div class="l">Active clients</div></div>`),
+    el(`<div class="stat"><div class="n" style="color:var(--green)">${ready}</div><div class="l">Exam-ready (≥${PASS}%)</div></div>`),
+    el(`<div class="stat"><div class="n" style="color:var(--amber)">${upcoming}</div><div class="l">Exams in ≤30 days</div></div>`),
+    el(`<div class="stat"><div class="n">${avg==null?"—":avg+"%"}</div><div class="l">Avg mock score</div></div>`)
+  );
+  root.append(stats);
+
+  const dupes=duplicateGroups();
+  if(dupes.length){
+    const n=dupes.reduce((a,g)=>a+g.length,0);
+    const banner=el(`<div class="card tight" style="border-color:var(--warn);background:rgba(255,122,69,.08);margin-bottom:18px">
+      <div class="spread"><div><b style="color:var(--warn)">⚠ ${dupes.length} possible duplicate ${dupes.length>1?"clients":"client"} found</b>
+      <div class="muted" style="font-size:13px;margin-top:3px">${n} records share a name and trade. Merge them into one file — all exams, sessions, intake and plan are kept.</div></div>
+      <button class="btn sm" id="mergeBtn">Review &amp; merge</button></div></div>`);
+    root.append(banner);
+    $("#mergeBtn",root).onclick=()=>mergeModal();
+  }
+
+  if(!cs.length){
+    root.append(el(`<div class="empty"><div class="big">◈</div><b>No clients yet.</b><br>Start with a <a href="#" id="e1">Readiness Intake</a> to create your first client file.</div>`));
+    $("#e1",root).onclick=ev=>{ev.preventDefault();go("intake");};
+  } else {
+    const card=el(`<div class="card"><div class="spread" style="margin-bottom:6px"><h3>Roster</h3><span class="dim">${cs.length} client${cs.length>1?"s":""}</span></div></div>`);
+    const tbl=el(`<table><thead><tr><th>Client</th><th>Trade</th><th>Readiness</th><th>Last mock</th><th>Exam date</th><th>Countdown</th></tr></thead><tbody></tbody></table>`);
+    const tb=$("tbody",tbl);
+    cs.slice().sort((a,b)=>(daysUntil(a.examDate)??1e9)-(daysUntil(b.examDate)??1e9)).forEach(c=>{
+      const r=readiness(c);const rl=readyLabel(r==null?null:r);
+      const last=c.exams[c.exams.length-1];
+      const d=daysUntil(c.examDate);
+      const cd=d==null?'<span class="dim">—</span>':d<0?'<span class="pill">done</span>':`<span class="pill ${d<=14?'red':d<=30?'amber':''}">${d} d</span>`;
+      const tr=el(`<tr class="click">
+        <td><b>${esc(c.name)}</b></td>
+        <td>${TRADES[c.trade].emoji} ${esc(TRADES[c.trade].name)}</td>
+        <td>${r==null?'<span class="dim">—</span>':`<span class="pill ${rl.c}">${r}% · ${rl.t}</span>`}</td>
+        <td>${last?`<span class="pill ${pctClass(last.pct)}">${last.pct}%</span>`:'<span class="dim">none</span>'}</td>
+        <td>${fmtDate(c.examDate)}</td>
+        <td>${cd}</td>
+      </tr>`);
+      tr.onclick=()=>go("client",{id:c.id});
+      tb.append(tr);
+    });
+    card.append(tbl);root.append(card);
+  }
+
+  $("#add",root).onclick=()=>addClientModal();
+  $("#exp",root).onclick=()=>exportData();
+  $("#imp",root).onclick=()=>importData();
+};
+
+function readiness(c){
+  // Prefer most recent mock exam; fall back to intake diagnostic; else null.
+  if(c.exams&&c.exams.length)return c.exams[c.exams.length-1].pct;
+  if(c.intake&&c.intake.readiness!=null)return c.intake.readiness;
+  return null;
+}
+
+/* ============================================================
+   6. CLIENTS LIST
+   ============================================================ */
+VIEWS.clients=function(root){
+  root.append(el(`<div class="page-head spread">
+    <div><div class="kicker">Clients</div><h1>Client files</h1>
+    <p class="muted">One file per tradesperson — intake, mock results, study plan, and session log all in one place.</p></div>
+    <button class="btn primary" id="add">＋ New client</button>
+  </div>`));
+  $("#add",root).onclick=()=>addClientModal();
+  if(!DB.clients.length){root.append(el(`<div class="empty"><div class="big">▤</div>No clients yet.</div>`));return;}
+  const grid=el(`<div class="grid g3"></div>`);
+  DB.clients.forEach(c=>{
+    const r=readiness(c);const rl=readyLabel(r);const d=daysUntil(c.examDate);
+    const card=el(`<div class="card tight" style="cursor:pointer">
+      <div class="spread"><b>${esc(c.name)}</b>${r==null?"":`<span class="pill ${rl.c}">${r}%</span>`}</div>
+      <div class="muted" style="font-size:13px;margin:6px 0 12px">${TRADES[c.trade].emoji} ${esc(TRADES[c.trade].name)} · ${TRADES[c.trade].code}</div>
+      <div class="spread"><span class="tag">Exam ${fmtDate(c.examDate)}</span>${d!=null&&d>=0?`<span class="pill ${d<=14?'red':d<=30?'amber':''}">${d} d</span>`:""}</div>
+    </div>`);
+    card.onclick=()=>go("client",{id:c.id});
+    grid.append(card);
+  });
+  root.append(grid);
+};
+
+/* ============================================================
+   7. CLIENT FILE
+   ============================================================ */
+VIEWS.client=function(root,{id}){
+  const c=getClient(id);
+  if(!c){go("clients");return;}
+  const r=readiness(c);const rl=readyLabel(r);const d=daysUntil(c.examDate);
+  root.append(el(`<div class="page-head">
+    <a href="#" id="back" class="dim" style="font-size:13px">← All clients</a>
+    <div class="spread" style="margin-top:8px;align-items:flex-start">
+      <div>
+        <h1>${esc(c.name)}</h1>
+        <p class="muted" style="margin-top:4px">${TRADES[c.trade].emoji} ${esc(TRADES[c.trade].name)} (${TRADES[c.trade].code}) · Exam ${fmtDate(c.examDate)} ${d!=null&&d>=0?`· <b style="color:var(--amber)">${d} days out</b>`:""}</p>
+      </div>
+      <div class="row">
+        <button class="btn sm" id="edit">Edit</button>
+        <button class="btn sm red ghost" id="del">Delete</button>
+      </div>
+    </div>
+  </div>`));
+  $("#back",root).onclick=e=>{e.preventDefault();go("clients");};
+  $("#edit",root).onclick=()=>addClientModal(c);
+  $("#del",root).onclick=()=>{if(confirm("Delete "+c.name+" and all their data?")){DB.clients=DB.clients.filter(x=>x.id!==c.id);save();toast("Client deleted");go("clients");}};
+
+  // readiness summary + actions
+  const summ=el(`<div class="grid g3" style="margin-bottom:18px"></div>`);
+  summ.append(
+    el(`<div class="stat"><div class="n ${r==null?"":"" }" style="color:${r==null?'var(--ink3)':r>=PASS?'var(--green)':r>=PASS-12?'var(--amber)':'#ff5e78'}">${r==null?"—":r+"%"}</div><div class="l">Readiness · ${rl.t}</div></div>`),
+    el(`<div class="stat"><div class="n">${c.exams.length}</div><div class="l">Mock exams taken</div></div>`),
+    el(`<div class="stat"><div class="n">${c.sessions.reduce((a,s)=>a+(+s.hours||0),0)}</div><div class="l">Coached / logged hours</div></div>`)
+  );
+  root.append(summ);
+
+  const actions=el(`<div class="row" style="margin-bottom:20px">
+    <button class="btn primary" id="aExam">◷ Start mock exam</button>
+    <button class="btn" id="aIntake">◈ ${c.intake?"Redo":"Run"} intake</button>
+    <button class="btn" id="aPlan">▦ ${c.plan?"View":"Build"} study plan</button>
+    <button class="btn" id="aLog">＋ Log session</button>
+  </div>`);
+  root.append(actions);
+  $("#aExam",root).onclick=()=>go("exam",{id:c.id});
+  $("#aIntake",root).onclick=()=>go("intake",{id:c.id});
+  $("#aPlan",root).onclick=()=>go("plan",{id:c.id});
+  $("#aLog",root).onclick=()=>logSessionModal(c);
+
+  const cols=el(`<div class="row" style="align-items:flex-start"></div>`);
+  const left=el(`<div class="grow col"></div>`);
+  const right=el(`<div class="col" style="flex:0 0 340px;max-width:340px"></div>`);
+
+  // --- Block mastery (from latest exam or intake) ---
+  const blocks=TRADES[c.trade].blocks;
+  const latest=c.exams[c.exams.length-1];
+  const blockCard=el(`<div class="card"><h3>Competency breakdown</h3><div class="sub">${latest?"From most recent mock exam":c.intake?"From readiness intake":"No data yet — run an intake or mock exam"}</div></div>`);
+  const src=latest?latest.byBlock:(c.intake?c.intake.diagnostic.byBlock:null);
+  if(src){
+    blocks.forEach(b=>{
+      const o=src[b];const p=o&&o.total?Math.round(o.correct/o.total*100):null;
+      blockCard.append(el(`<div style="margin:11px 0">
+        <div class="spread" style="margin-bottom:5px"><span style="font-weight:600;font-size:13.5px">${esc(b)}</span><span class="tag">${p==null?"—":p+"%"}</span></div>
+        <div class="bar"><i style="width:${p||0}%;background:${p==null?'var(--line2)':p>=PASS?'var(--green)':p>=PASS-12?'var(--amber)':'var(--red)'}"></i></div>
+      </div>`));
+    });
+  } else {
+    blockCard.append(el(`<div class="empty" style="padding:26px">No competency data yet.</div>`));
+  }
+  left.append(blockCard);
+
+  // --- Exam history ---
+  const hist=el(`<div class="card"><div class="spread"><h3>Mock exam history</h3>${c.exams.length>1?`<span class="dim">trend →</span>`:""}</div></div>`);
+  if(c.exams.length){
+    const spark=el(`<div class="spark" style="margin:14px 0 6px"></div>`);
+    c.exams.forEach(e=>{const h=Math.max(6,e.pct);spark.append(el(`<i class="${e.pct>=PASS?'pass':'fail'}" style="height:${h}%" title="${e.pct}%"></i>`));});
+    hist.append(spark);
+    const t=el(`<table><thead><tr><th>Date</th><th>Score</th><th>Time</th><th>Result</th></tr></thead><tbody></tbody></table>`);
+    c.exams.slice().reverse().forEach(e=>{
+      $("tbody",t).append(el(`<tr><td>${fmtDate(e.date)}</td><td>${e.score}/${e.total} · <b>${e.pct}%</b></td><td>${e.minutes||"—"} min</td><td><span class="pill ${pctClass(e.pct)}">${e.pct>=PASS?"PASS":"below"}</span></td></tr>`));
+    });
+    hist.append(t);
+  } else hist.append(el(`<div class="empty" style="padding:26px">No mock exams taken yet.</div>`));
+  left.append(hist);
+
+  // --- Session log ---
+  const slog=el(`<div class="card"><h3>Session log</h3></div>`);
+  if(c.sessions.length){
+    c.sessions.slice().reverse().forEach(s=>{
+      slog.append(el(`<div class="task"><div class="grow"><div style="font-weight:600;font-size:13.5px">${fmtDate(s.date)} · ${esc(s.hours)}h</div><div class="muted" style="font-size:13px">${esc(s.note||"—")}</div></div></div>`));
+    });
+  } else slog.append(el(`<div class="empty" style="padding:22px">No sessions logged.</div>`));
+  right.append(slog);
+
+  // --- Plan snapshot ---
+  if(c.plan){
+    const done=c.plan.weeks.flatMap(w=>w.tasks).filter(t=>t.done).length;
+    const tot=c.plan.weeks.flatMap(w=>w.tasks).length;
+    const ps=el(`<div class="card"><h3>Study plan</h3><div class="sub">${c.plan.weeks.length} weeks · ${c.plan.hoursPerWeek}h/week</div>
+      <div class="spread" style="margin-bottom:6px"><span class="tag">${done}/${tot} tasks done</span><span class="tag">${tot?Math.round(done/tot*100):0}%</span></div>
+      <div class="bar"><i style="width:${tot?done/tot*100:0}%;background:var(--amber)"></i></div>
+      <button class="btn sm" id="openPlan" style="margin-top:14px">Open plan →</button></div>`);
+    right.append(ps);
+    setTimeout(()=>{$("#openPlan",root)&&($("#openPlan",root).onclick=()=>go("plan",{id:c.id}));},0);
+  }
+
+  cols.append(left,right);root.append(cols);
+};
+
+/* ============================================================
+   8. READINESS INTAKE
+   ============================================================ */
+VIEWS.intake=function(root,{id}){
+  let client=id?getClient(id):null;
+  const st={step:0, clientId:id||null, trade:client?client.trade:"electrician",
+            name:client?client.name:"", examDate:client?client.examDate:"",
+            confidence:{}, answers:{}, qset:[]};
+
+  function head(t,p){return `<div class="page-head"><div class="kicker">Readiness Intake</div><h1>${t}</h1><p class="muted">${p}</p></div>`;}
+  function blocksOf(){return TRADES[st.trade].blocks;}
+
+  function start(){
+    root.innerHTML="";
+    root.append(el(head("Where are they starting from?","A 10-minute diagnostic that scores a new client's baseline, finds their weak blocks, and recommends a plan. It creates (or updates) their client file.")));
+    const card=el(`<div class="card" style="max-width:620px"></div>`);
+    card.append(el(`<div class="grid g2">
+      <label class="fld">Client name<input type="text" id="iName" value="${esc(st.name)}" placeholder="e.g. Dave Kowalski"></label>
+      <label class="fld">Target exam date<input type="date" id="iDate" value="${st.examDate}"></label>
+    </div>`));
+    const tl=el(`<label class="fld" style="margin-top:14px">Trade</label>`);
+    const seg=el(`<div class="seg" style="flex-wrap:wrap"></div>`);
+    trades().forEach(k=>{const b=el(`<button class="${k===st.trade?'on':''}">${TRADES[k].emoji} ${TRADES[k].name.split(" ")[0]}</button>`);b.onclick=()=>{st.trade=k;[...seg.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");};seg.append(b);});
+    card.append(tl,seg);
+    card.append(el(`<div class="divider"></div>`));
+    const nb=el(`<button class="btn primary" id="next">Begin self-rating →</button>`);
+    nb.onclick=()=>{
+      st.name=$("#iName",card).value.trim();st.examDate=$("#iDate",card).value;
+      if(!st.name){toast("Enter a client name");return;}
+      confidence();
+    };
+    card.append(nb);
+    root.append(card);
+  }
+
+  function confidence(){
+    root.innerHTML="";
+    root.append(el(head("Self-rating: how confident on each block?",`Have ${esc(st.name)} rate themselves 1 (shaky) to 5 (solid). This becomes the baseline we compare progress against.`)));
+    const card=el(`<div class="card" style="max-width:640px"></div>`);
+    blocksOf().forEach(b=>{
+      const cur=st.confidence[b]||0;
+      const wrap=el(`<div style="margin-bottom:16px"><div style="font-weight:600;margin-bottom:7px">${esc(b)}</div></div>`);
+      const sc=el(`<div class="scale"></div>`);
+      for(let i=1;i<=5;i++){const bt=el(`<button class="${cur===i?'on':''}">${i}</button>`);bt.onclick=()=>{st.confidence[b]=i;[...sc.children].forEach(x=>x.classList.remove("on"));bt.classList.add("on");};sc.append(bt);}
+      wrap.append(sc);card.append(wrap);
+    });
+    card.append(el(`<div class="divider"></div>`));
+    const r=el(`<div class="row"><button class="btn ghost" id="bk">← Back</button><button class="btn primary grow" id="next">Start diagnostic quiz →</button></div>`);
+    card.append(r);root.append(card);
+    $("#bk",card).onclick=start;
+    $("#next",card).onclick=()=>{
+      if(blocksOf().some(b=>!st.confidence[b])){toast("Rate every block first");return;}
+      st.qset=shuffle(questionsFor(st.trade));diagnostic();
+    };
+  }
+
+  function diagnostic(){
+    let i=0;
+    function paint(){
+      root.innerHTML="";
+      const q=st.qset[i];
+      root.append(el(`<div class="page-head spread"><div><div class="kicker">Diagnostic · ${esc(st.name)}</div><h1>Question ${i+1} <span class="dim" style="font-weight:400">/ ${st.qset.length}</span></h1></div><span class="pill amber">${esc(q.block)}</span></div>`));
+      const card=el(`<div class="card" style="max-width:680px"></div>`);
+      card.append(el(`<div style="font-size:17px;font-weight:600;margin-bottom:16px">${esc(q.q)}</div>`));
+      q.opts.forEach((o,oi)=>{
+        const sel=st.answers[i]===oi;
+        const opt=el(`<div class="q-opt ${sel?'sel':''}"><div class="key">${"ABCD"[oi]}</div><div>${esc(o)}</div></div>`);
+        opt.onclick=()=>{st.answers[i]=oi;paint();};
+        card.append(opt);
+      });
+      card.append(el(`<div class="divider"></div>`));
+      const nav=el(`<div class="row"><button class="btn ghost" id="prev" ${i===0?"disabled":""}>← Prev</button><div class="grow"></div><button class="btn primary" id="next">${i===st.qset.length-1?"Finish & score":"Next →"}</button></div>`);
+      card.append(nav);root.append(card);
+      $("#prev",card).onclick=()=>{if(i>0){i--;paint();}};
+      $("#next",card).onclick=()=>{
+        if(st.answers[i]==null){toast("Pick an answer");return;}
+        if(i<st.qset.length-1){i++;paint();}else finish();
+      };
+    }
+    paint();
+  }
+
+  function finish(){
+    const blocks=blocksOf();
+    const byBlock={};blocks.forEach(b=>byBlock[b]={correct:0,total:0});
+    let correct=0;
+    st.qset.forEach((q,idx)=>{byBlock[q.block].total++;if(st.answers[idx]===q.answer){correct++;byBlock[q.block].correct++;}});
+    const total=st.qset.length;const pct=Math.round(correct/total*100);
+    // weighted readiness: 70% diagnostic, 30% self-confidence (scaled to 100)
+    const confAvg=blocks.reduce((a,b)=>a+(st.confidence[b]||0),0)/blocks.length;
+    const confPct=Math.round((confAvg/5)*100);
+    const readinessScore=Math.round(pct*0.7+confPct*0.3);
+
+    const weak=blocks.map(b=>({b,p:byBlock[b].total?Math.round(byBlock[b].correct/byBlock[b].total*100):0}))
+                     .sort((a,b)=>a.p-b.p).slice(0,3).map(x=>x.b);
+
+    // persist into client — reuse an existing match (don't duplicate), and lock
+    // st.clientId so a re-trigger of finish() can't create a second record.
+    if(!st.clientId){const match=findClientByNameTrade(st.name,st.trade);if(match)st.clientId=match.id;}
+    if(st.clientId){client=getClient(st.clientId);client.trade=st.trade;client.examDate=st.examDate;}
+    else client=newClient(st.name,st.trade,st.examDate);
+    st.clientId=client.id;
+    const reused=!!client.intake;
+    client.intake={confidence:{...st.confidence},diagnostic:{score:correct,total,byBlock},readiness:readinessScore,weak,date:today()};
+    save();
+
+    root.innerHTML="";
+    const rl=readyLabel(readinessScore);
+    root.append(el(`<div class="page-head"><div class="kicker">Baseline complete</div><h1>${esc(st.name)} — ${readinessScore}% ready</h1><p class="muted">Diagnostic ${pct}% · self-confidence ${confPct}%. Blended into a baseline readiness score we'll track from here.</p></div>`));
+    const top=el(`<div class="grid g3" style="margin-bottom:18px"></div>`);
+    top.append(
+      el(`<div class="stat"><div class="n" style="color:${readinessScore>=PASS?'var(--green)':readinessScore>=PASS-12?'var(--amber)':'#ff5e78'}">${readinessScore}%</div><div class="l">Baseline readiness</div></div>`),
+      el(`<div class="stat"><div class="n">${correct}/${total}</div><div class="l">Diagnostic score</div></div>`),
+      el(`<div class="stat"><div class="n"><span class="pill ${rl.c}" style="font-size:14px">${rl.t}</span></div><div class="l">Verdict</div></div>`)
+    );
+    root.append(top);
+
+    const card=el(`<div class="card" style="max-width:720px"><h3>Where to focus first</h3><div class="sub">Lowest-scoring competencies — the study plan will front-load these.</div></div>`);
+    blocks.map(b=>({b,o:byBlock[b]})).sort((a,b)=>(a.o.correct/Math.max(1,a.o.total))-(b.o.correct/Math.max(1,b.o.total))).forEach(({b,o})=>{
+      const p=o.total?Math.round(o.correct/o.total*100):0;
+      card.append(el(`<div style="margin:11px 0"><div class="spread" style="margin-bottom:5px"><span style="font-weight:600;font-size:13.5px">${esc(b)} ${weak.includes(b)?'<span class="chip" style="background:rgba(255,122,69,.18);color:var(--warn)">focus</span>':''}</span><span class="tag">${o.correct}/${o.total} · ${p}%</span></div><div class="bar"><i style="width:${p}%;background:${p>=PASS?'var(--green)':p>=PASS-12?'var(--amber)':'var(--red)'}"></i></div></div>`));
+    });
+    card.append(el(`<div class="divider"></div>`));
+    const r=el(`<div class="row"><button class="btn primary" id="plan">Build study plan from this →</button><button class="btn" id="file">Open client file</button></div>`);
+    card.append(r);root.append(card);
+    $("#plan",card).onclick=()=>go("plan",{id:client.id});
+    $("#file",card).onclick=()=>go("client",{id:client.id});
+    toast(reused?("Updated existing file · "+st.name):("Baseline saved to "+st.name));
+  }
+
+  start();
+};
+
+/* ============================================================
+   9. MOCK EXAM ENGINE
+   ============================================================ */
+VIEWS.exam=function(root,{id}){
+  let client=id?getClient(id):null;
+  const st={clientId:id||null, trade:client?client.trade:"electrician",
+            length:"all", minutes:0, qset:[], answers:{}, timer:null, elapsed:0, started:false};
+
+  function setup(){
+    root.innerHTML="";
+    root.append(el(`<div class="page-head"><div class="kicker">Mock Exam</div><h1>Timed Red Seal mock exam</h1><p class="muted">Multiple-choice, weighted across competency blocks, ${PASS}% to pass — the real format. Scores attach to the client file with a full per-block breakdown.</p></div>`));
+    const card=el(`<div class="card" style="max-width:600px"></div>`);
+    // trade (locked if launched from a client)
+    if(client){
+      card.append(el(`<div class="pill amber" style="margin-bottom:14px">${TRADES[st.trade].emoji} ${esc(client.name)} · ${TRADES[st.trade].name}</div>`));
+    } else {
+      const tl=el(`<label class="fld">Trade</label>`);
+      const seg=el(`<div class="seg" style="flex-wrap:wrap;margin-bottom:8px"></div>`);
+      trades().forEach(k=>{const b=el(`<button class="${k===st.trade?'on':''}">${TRADES[k].emoji} ${TRADES[k].name.split(" ")[0]}</button>`);b.onclick=()=>{st.trade=k;[...seg.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");avail();};seg.append(b);});
+      card.append(tl,seg);
+    }
+    const availEl=el(`<div class="muted" style="font-size:13px;margin-bottom:14px"></div>`);
+    card.append(availEl);
+    function avail(){availEl.textContent=`${questionsFor(st.trade).length} questions in the bank for this trade.`;}
+    avail();
+
+    const ll=el(`<label class="fld">Exam length</label>`);
+    const lseg=el(`<div class="seg" style="margin-bottom:6px"></div>`);
+    [["10","Quick (10)"],["20","Standard (20)"],["all","Full bank"]].forEach(([v,lbl])=>{
+      const b=el(`<button class="${st.length===v?'on':''}">${lbl}</button>`);
+      b.onclick=()=>{st.length=v;[...lseg.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");};
+      lseg.append(b);
+    });
+    card.append(ll,lseg);
+    card.append(el(`<div class="divider"></div>`));
+    const go2=el(`<button class="btn primary" id="go">▶ Start exam</button>`);
+    go2.onclick=()=>{
+      let pool=shuffle(questionsFor(st.trade));
+      const n=st.length==="all"?pool.length:Math.min(+st.length,pool.length);
+      st.qset=pool.slice(0,n);
+      if(!st.qset.length){toast("No questions for this trade yet");return;}
+      run();
+    };
+    card.append(go2);root.append(card);
+  }
+
+  function run(){
+    st.started=true;st.elapsed=0;
+    if(st.timer)clearInterval(st.timer);
+    st.timer=setInterval(()=>{st.elapsed++;const t=$("#timer");if(t){const m=Math.floor(st.elapsed/60),s=st.elapsed%60;t.textContent=`${m}:${String(s).padStart(2,"0")}`;}},1000);
+    let i=0;
+    function paint(){
+      root.innerHTML="";
+      const q=st.qset[i];
+      const answered=Object.keys(st.answers).length;
+      root.append(el(`<div class="page-head spread">
+        <div><div class="kicker">Mock Exam${client?" · "+esc(client.name):""}</div><h1>Question ${i+1} <span class="dim" style="font-weight:400">/ ${st.qset.length}</span></h1></div>
+        <div class="row" style="align-items:center"><span class="timer" id="timer">0:00</span><button class="btn sm red ghost" id="abort">End</button></div>
+      </div>`));
+      // progress dots
+      const prog=el(`<div class="bar" style="margin-bottom:16px"><i style="width:${answered/st.qset.length*100}%;background:var(--amber)"></i></div>`);
+      root.append(prog);
+      const card=el(`<div class="card" style="max-width:700px"><span class="pill" style="margin-bottom:12px">${esc(q.block)}</span></div>`);
+      card.append(el(`<div style="font-size:17px;font-weight:600;margin:4px 0 16px">${esc(q.q)}</div>`));
+      q.opts.forEach((o,oi)=>{
+        const sel=st.answers[i]===oi;
+        const opt=el(`<div class="q-opt ${sel?'sel':''}"><div class="key">${"ABCD"[oi]}</div><div>${esc(o)}</div></div>`);
+        opt.onclick=()=>{st.answers[i]=oi;paint();};
+        card.append(opt);
+      });
+      card.append(el(`<div class="divider"></div>`));
+      const nav=el(`<div class="row"><button class="btn ghost" id="prev" ${i===0?"disabled":""}>← Prev</button><div class="grow"></div>
+        <button class="btn" id="skip">Skip</button>
+        <button class="btn primary" id="next">${i===st.qset.length-1?"Submit exam":"Next →"}</button></div>`);
+      card.append(nav);root.append(card);
+      const tm=$("#timer");const m=Math.floor(st.elapsed/60),s=st.elapsed%60;tm.textContent=`${m}:${String(s).padStart(2,"0")}`;
+      $("#abort",root).onclick=()=>{if(confirm("End and score now? Unanswered questions count as wrong.")){submit();}};
+      $("#prev",card).onclick=()=>{if(i>0){i--;paint();}};
+      $("#skip",card).onclick=()=>{if(i<st.qset.length-1){i++;paint();}};
+      $("#next",card).onclick=()=>{if(i<st.qset.length-1){i++;paint();}else submit();};
+    }
+    paint();
+  }
+
+  function submit(){
+    clearInterval(st.timer);
+    const blocks=TRADES[st.trade].blocks;
+    const byBlock={};blocks.forEach(b=>byBlock[b]={correct:0,total:0});
+    let correct=0;
+    st.qset.forEach((q,idx)=>{byBlock[q.block].total++;if(st.answers[idx]===q.answer){correct++;byBlock[q.block].correct++;}});
+    const total=st.qset.length;const pct=Math.round(correct/total*100);
+    const minutes=Math.max(1,Math.round(st.elapsed/60));
+    const rec={date:today(),trade:st.trade,score:correct,total,pct,byBlock,minutes};
+    if(client){client.exams.push(rec);save();}
+
+    root.innerHTML="";
+    const passed=pct>=PASS;
+    root.append(el(`<div class="page-head"><div class="kicker">Exam complete</div><h1>${passed?"🟢 Pass":"🔴 Below standard"} — ${pct}%</h1><p class="muted">${correct} of ${total} correct in ${minutes} min. Pass mark is ${PASS}%.${client?" Saved to "+esc(client.name)+"'s file.":""}</p></div>`));
+    const top=el(`<div class="grid g4" style="margin-bottom:18px"></div>`);
+    top.append(
+      el(`<div class="stat"><div class="n" style="color:${passed?'var(--green)':'#ff5e78'}">${pct}%</div><div class="l">Score</div></div>`),
+      el(`<div class="stat"><div class="n">${correct}/${total}</div><div class="l">Correct</div></div>`),
+      el(`<div class="stat"><div class="n">${minutes}</div><div class="l">Minutes</div></div>`),
+      el(`<div class="stat"><div class="n">${blocks.filter(b=>byBlock[b].total&&byBlock[b].correct/byBlock[b].total>=PASS/100).length}/${blocks.filter(b=>byBlock[b].total).length}</div><div class="l">Blocks passed</div></div>`)
+    );
+    root.append(top);
+
+    const bc=el(`<div class="card" style="max-width:720px;margin-bottom:18px"><h3>Per-block breakdown</h3><div class="sub">Where the points came from — and where they leaked.</div></div>`);
+    blocks.filter(b=>byBlock[b].total).sort((a,b)=>(byBlock[a].correct/byBlock[a].total)-(byBlock[b].correct/byBlock[b].total)).forEach(b=>{
+      const o=byBlock[b];const p=Math.round(o.correct/o.total*100);
+      bc.append(el(`<div style="margin:11px 0"><div class="spread" style="margin-bottom:5px"><span style="font-weight:600;font-size:13.5px">${esc(b)}</span><span class="tag">${o.correct}/${o.total} · ${p}%</span></div><div class="bar"><i style="width:${p}%;background:${p>=PASS?'var(--green)':p>=PASS-12?'var(--amber)':'var(--red)'}"></i></div></div>`));
+    });
+    root.append(bc);
+
+    // answer review
+    const rev=el(`<div class="card" style="max-width:720px"><h3>Review every question</h3><div class="sub">Each with the correct answer and the why.</div></div>`);
+    st.qset.forEach((q,idx)=>{
+      const ua=st.answers[idx];const ok=ua===q.answer;
+      const item=el(`<div style="padding:14px 0;border-bottom:1px solid var(--line)"><div class="spread" style="margin-bottom:9px"><span style="font-weight:600">${idx+1}. ${esc(q.q)}</span><span class="pill ${ok?'green':'red'}">${ok?'✓':'✗'}</span></div></div>`);
+      q.opts.forEach((o,oi)=>{
+        let cls="";if(oi===q.answer)cls="correct";else if(oi===ua)cls="wrong";
+        item.append(el(`<div class="q-opt ${cls}" style="cursor:default;margin-bottom:7px"><div class="key">${"ABCD"[oi]}</div><div>${esc(o)}</div></div>`));
+      });
+      item.append(el(`<div class="muted" style="font-size:13px;margin-top:4px"><b style="color:var(--amber)">Why:</b> ${esc(q.why)}</div>`));
+      rev.append(item);
+    });
+    root.append(rev);
+
+    const r=el(`<div class="row" style="margin-top:18px"><button class="btn primary" id="again">Take another</button>${client?`<button class="btn" id="file">Back to ${esc(client.name)}</button>`:""}<button class="btn ghost" id="plan">Build study plan</button></div>`);
+    root.append(r);
+    $("#again",root).onclick=()=>VIEWS.exam(root,{id});
+    if(client)$("#file",root).onclick=()=>go("client",{id:client.id});
+    $("#plan",root).onclick=()=>go("plan",{id:client?client.id:null});
+    if(client)toast("Result saved · "+pct+"%");
+  }
+
+  setup();
+};
+
+/* ============================================================
+   10. STUDY-PLAN GENERATOR
+   ============================================================ */
+const STUDY_TASKS={
+  electrician:{
+    "Safety & Code":["Read CEC Sections 0,2,4,12 — definitions & conductor ampacity","Drill 20 code-lookup questions against the CEC index","Quiz: bonding vs grounding"],
+    "Circuits & Theory":["Work 15 Ohm's-law / power problems by hand","Series vs parallel resistance practice set","AC fundamentals: review impedance & power factor"],
+    "Wiring Methods":["Box-fill and conductor-count calculations","Cable & raceway support rules walkthrough","Field task: identify wiring methods on a job photo set"],
+    "Motors & Controls":["Draw a 3-wire start/stop control circuit from memory","Motor overload sizing practice","Reversing-starter logic review"],
+    "Services & Distribution":["Service & feeder sizing calculation set","Single-line diagram read-through","Demand-factor practice problems"]
+  },
+  millwright:{
+    "Safety & Rigging":["Sling angle / load-multiplier calculation set","Lockout-tagout procedure recall","Rigging hardware inspection checklist"],
+    "Bearings & Lubrication":["Bearing failure-mode flashcards","Grease compatibility chart review","Lubrication interval calculation practice"],
+    "Pumps & Drives":["NPSH and cavitation problem set","Belt vs chain vs gear drive comparison","Pump curve reading exercise"],
+    "Alignment":["Reverse-dial alignment math walkthrough","Soft-foot diagnosis procedure","Thermal-growth compensation review"],
+    "Hydraulics & Pneumatics":["Read 5 hydraulic schematics","Cylinder force (F=P×A) problem set","Valve function flashcards"]
+  },
+  welder:{
+    "Safety & Setup":["PPE & lens-shade quiz","Cylinder handling & fire-watch procedure","Machine setup: polarity & amperage settings"],
+    "Metallurgy":["Carbon equivalent & preheat practice","HAZ and cooling-rate concepts","Distortion control methods review"],
+    "SMAW":["Electrode classification flashcards (E60xx/E70xx)","Run practice beads — all positions","Defect ID: undercut, porosity, slag"],
+    "GMAW/FCAW":["Shielding gas selection chart","Wire feed / voltage tuning practice","Porosity troubleshooting drill"],
+    "Symbols & Inspection":["Weld-symbol reading set (20 symbols)","Visual inspection acceptance criteria","NDT methods overview"]
+  },
+  plumber:{
+    "Safety & Code":["Code lookup drills — fixtures & cross-connection","Backflow prevention device types","Permit & inspection process review"],
+    "Drainage (DWV)":["Drain slope & sizing calculations","Trap types and seal protection","Fixture unit loading practice"],
+    "Water Supply":["Pipe sizing by fixture units","Water hammer & pressure control","Material selection (PEX/copper/CPVC)"],
+    "Venting":["Vent sizing & types walkthrough","AAV application rules","Wet venting scenarios"],
+    "Fixtures & Gas":["Gas pipe sizing practice","Fixture rough-in dimensions","Appliance venting basics"]
+  }
+};
+
+VIEWS.plan=function(root,{id}){
+  let client=id?getClient(id):null;
+  // If client already has a plan and we arrived from their file, show it.
+  if(client&&client.plan){return showPlan(root,client);}
+
+  const st={clientId:id||null, trade:client?client.trade:"electrician",
+            examDate:client?client.examDate:"", hours:6,
+            weak:(client&&client.intake)?client.intake.weak:[]};
+
+  root.append(el(`<div class="page-head"><div class="kicker">Study-Plan Generator</div><h1>Build a week-by-week plan</h1><p class="muted">Enter the exam date and weekly hours. We back-plan from the date, front-load the weak blocks, and end with full mock exams and review.</p></div>`));
+  const card=el(`<div class="card" style="max-width:640px"></div>`);
+
+  if(client){card.append(el(`<div class="pill amber" style="margin-bottom:14px">${TRADES[st.trade].emoji} ${esc(client.name)} · ${TRADES[st.trade].name}</div>`));}
+  else{
+    const tl=el(`<label class="fld">Trade</label>`);const seg=el(`<div class="seg" style="flex-wrap:wrap;margin-bottom:8px"></div>`);
+    trades().forEach(k=>{const b=el(`<button class="${k===st.trade?'on':''}">${TRADES[k].emoji} ${TRADES[k].name.split(" ")[0]}</button>`);b.onclick=()=>{st.trade=k;[...seg.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");};seg.append(b);});
+    card.append(tl,seg);
+  }
+  card.append(el(`<div class="grid g2" style="margin-top:6px">
+    <label class="fld">Exam date<input type="date" id="pDate" value="${st.examDate}"></label>
+    <label class="fld">Study hours / week<input type="number" id="pHours" min="2" max="30" value="${st.hours}"></label>
+  </div>`));
+
+  // weak block selection
+  const wl=el(`<label class="fld" style="margin-top:14px">Focus blocks (front-loaded)${st.weak.length?' <span class="dim" style="font-weight:400">— prefilled from intake</span>':''}</label>`);
+  const wrap=el(`<div class="row" style="margin-top:2px"></div>`);
+  TRADES[st.trade].blocks.forEach(b=>{
+    const on=st.weak.includes(b);
+    const chip=el(`<button class="btn sm ${on?'primary':'ghost'}" style="border-radius:30px">${esc(b)}</button>`);
+    chip.onclick=()=>{if(st.weak.includes(b))st.weak=st.weak.filter(x=>x!==b);else st.weak.push(b);chip.classList.toggle("primary");chip.classList.toggle("ghost");};
+    wrap.append(chip);
+  });
+  card.append(wl,wrap);
+  card.append(el(`<div class="divider"></div>`));
+  const gen=el(`<button class="btn primary" id="gen">Generate plan →</button>`);
+  gen.onclick=()=>{
+    st.examDate=$("#pDate",card).value;st.hours=Math.max(2,+$("#pHours",card).value||6);
+    if(!st.examDate){toast("Set an exam date");return;}
+    const d=daysUntil(st.examDate);
+    if(d==null||d<7){toast("Exam date must be at least a week out");return;}
+    const plan=buildPlan(st.trade,st.examDate,st.hours,st.weak);
+    if(!client&&st.clientId)client=getClient(st.clientId);
+    if(client){client.plan=plan;client.trade=st.trade;if(!client.examDate)client.examDate=st.examDate;save();showPlan(root,client);}
+    else{ // ad-hoc plan, no client — offer to save
+      showPlanAdhoc(root,plan,st);
+    }
+  };
+  card.append(gen);root.append(card);
+};
+
+function buildPlan(trade,examDate,hours,weak){
+  const blocks=TRADES[trade].blocks;
+  const totalWeeks=Math.max(2,Math.min(16,Math.ceil(daysUntil(examDate)/7)));
+  // order blocks: weak first, then the rest
+  const ordered=[...weak.filter(b=>blocks.includes(b)),...blocks.filter(b=>!weak.includes(b))];
+  const weeks=[];
+  // reserve final ~25% of weeks for mock exams + review
+  const reviewWeeks=Math.max(1,Math.round(totalWeeks*0.25));
+  const contentWeeks=totalWeeks-reviewWeeks;
+  for(let w=0;w<totalWeeks;w++){
+    const tasks=[];
+    if(w<contentWeeks){
+      // assign 1-2 blocks per content week, cycling through ordered (weak get more passes)
+      const idx=w%ordered.length;
+      const focus=ordered[idx];
+      const lib=(STUDY_TASKS[trade]&&STUDY_TASKS[trade][focus])||["Review key concepts","Work practice problems","Self-quiz"];
+      lib.forEach(t=>tasks.push({label:t,block:focus,done:false}));
+      // second block if hours allow
+      if(hours>=8){const f2=ordered[(idx+Math.ceil(ordered.length/2))%ordered.length];if(f2!==focus){const l2=(STUDY_TASKS[trade]&&STUDY_TASKS[trade][f2])||[];if(l2[0])tasks.push({label:l2[0],block:f2,done:false});}}
+      tasks.push({label:`Take a 10-question quick quiz on ${focus}`,block:focus,done:false});
+    } else {
+      const r=w-contentWeeks;
+      tasks.push({label:`Full-length mock exam #${r+1} — timed`,block:"Mock exam",done:false});
+      tasks.push({label:"Review every missed question + log weak blocks",block:"Review",done:false});
+      tasks.push({label:`Re-drill the 2 lowest blocks from the mock`,block:"Review",done:false});
+      if(r===reviewWeeks-1){tasks.push({label:"Final confidence pass + rest before exam day",block:"Exam prep",done:false});}
+    }
+    weeks.push({tasks});
+  }
+  return {trade,examDate,hoursPerWeek:hours,weak:weak.slice(),created:today(),weeks};
+}
+
+function showPlanAdhoc(root,plan,st){
+  root.innerHTML="";
+  root.append(el(`<div class="page-head spread"><div><div class="kicker">Study Plan</div><h1>${plan.weeks.length}-week plan · ${TRADES[plan.trade].name}</h1><p class="muted">Not attached to a client. Save it to a client file to track completion.</p></div>
+    <button class="btn primary" id="save">Save to a client</button></div>`));
+  renderWeeks(root,plan,null);
+  $("#save",root).onclick=()=>{
+    pickClientModal(plan.trade,(c)=>{c.plan=plan;if(!c.examDate)c.examDate=plan.examDate;save();toast("Plan saved to "+c.name);go("client",{id:c.id});});
+  };
+}
+
+function showPlan(root,client){
+  root.innerHTML="";
+  const plan=client.plan;
+  const done=plan.weeks.flatMap(w=>w.tasks).filter(t=>t.done).length;
+  const tot=plan.weeks.flatMap(w=>w.tasks).length;
+  const d=daysUntil(plan.examDate);
+  root.append(el(`<div class="page-head"><a href="#" id="back" class="dim" style="font-size:13px">← ${esc(client.name)}</a>
+    <div class="spread" style="margin-top:8px;align-items:flex-start"><div>
+      <h1>${esc(client.name)}'s ${plan.weeks.length}-week plan</h1>
+      <p class="muted" style="margin-top:4px">${TRADES[plan.trade].name} · ${plan.hoursPerWeek}h/week · exam ${fmtDate(plan.examDate)} ${d!=null&&d>=0?`· ${d} days out`:""}</p>
+    </div>
+    <div class="row"><button class="btn sm" id="print">🖨 Print / PDF</button><button class="btn sm red ghost" id="rebuild">Rebuild plan</button></div></div>`));
+  $("#back",root).onclick=e=>{e.preventDefault();go("client",{id:client.id});};
+  $("#print",root).onclick=()=>printPlan(client);
+  $("#rebuild",root).onclick=()=>{if(confirm("Discard this plan and build a new one?")){client.plan=null;save();go("plan",{id:client.id});}};
+  const prog=el(`<div class="card tight" style="margin-bottom:18px"><div class="spread" style="margin-bottom:7px"><b>Overall progress</b><span class="tag">${done}/${tot} tasks · ${tot?Math.round(done/tot*100):0}%</span></div><div class="bar"><i style="width:${tot?done/tot*100:0}%;background:var(--green)"></i></div></div>`);
+  root.append(prog);
+  renderWeeks(root,plan,()=>{save();showPlan(root,client);});
+}
+
+function renderWeeks(root,plan,onToggle){
+  const blockColor=(b)=>{
+    if(b==="Mock exam")return "rgba(200,16,46,.18);color:#ff5e78";
+    if(b==="Review"||b==="Exam prep")return "rgba(74,163,255,.16);color:var(--blue)";
+    return "rgba(255,176,0,.16);color:var(--amber)";
+  };
+  plan.weeks.forEach((wk,wi)=>{
+    const dateStr=weekDateLabel(plan.examDate,plan.weeks.length,wi);
+    const done=wk.tasks.filter(t=>t.done).length;
+    const week=el(`<div class="week"><div class="wh"><div><b>Week ${wi+1}</b> <span class="dim" style="font-size:12.5px">· ${dateStr}</span></div><span class="tag">${done}/${wk.tasks.length} done</span></div></div>`);
+    const body=el(`<div class="wb"></div>`);
+    wk.tasks.forEach((t)=>{
+      const task=el(`<div class="task ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''}><div class="grow"><span class="lbl" style="font-size:13.5px">${esc(t.label)}</span></div><span class="chip" style="background:${blockColor(t.block)}">${esc(t.block)}</span></div>`);
+      const cb=$("input",task);
+      cb.onchange=()=>{t.done=cb.checked;if(onToggle)onToggle();else{task.classList.toggle("done",t.done);}};
+      if(!onToggle)cb.disabled=true; // ad-hoc preview (not yet saved) — read-only
+      body.append(task);
+    });
+    week.append(body);root.append(week);
+  });
+}
+function weekDateLabel(examDate,totalWeeks,weekIndex){
+  // week 0 starts (totalWeeks) weeks before exam
+  const exam=new Date(examDate+"T00:00:00");
+  const start=new Date(exam);start.setDate(start.getDate()-(totalWeeks-weekIndex)*7);
+  return start.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+}
+
+/* Printable client handout — opens a clean, branded page and triggers the
+   browser's print dialog (use "Save as PDF" to hand a client a file). */
+function printPlan(client){
+  const plan=client.plan, t=TRADES[client.trade];
+  const d=daysUntil(plan.examDate);
+  const tot=plan.weeks.flatMap(w=>w.tasks).length;
+  const focus=(plan.weak&&plan.weak.length)?plan.weak.join(", "):"Balanced across all blocks";
+  const weeksHtml=plan.weeks.map((wk,wi)=>{
+    const dateStr=weekDateLabel(plan.examDate,plan.weeks.length,wi);
+    const rows=wk.tasks.map(tk=>`<div class="ptask"><span class="box">${tk.done?"☑":"☐"}</span><span class="plbl">${esc(tk.label)}</span><span class="pblk">${esc(tk.block)}</span></div>`).join("");
+    return `<div class="pweek"><div class="pwh"><b>Week ${wi+1}</b><span>${dateStr}</span></div>${rows}</div>`;
+  }).join("");
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(client.name)} — Red Seal Study Plan</title>
+<style>
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{background:#fff}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#16202b;margin:0;padding:32px 36px;font-size:13px;line-height:1.45}
+  .top{display:flex;align-items:center;gap:14px;border-bottom:3px solid #c8102e;padding-bottom:14px;margin-bottom:18px}
+  .seal{width:42px;height:42px;border-radius:50%;background:#c8102e;flex:0 0 42px;position:relative}
+  .seal:before{content:"";position:absolute;inset:6px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.6)}
+  .seal:after{content:"\\2692";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px}
+  .top h1{margin:0;font-size:20px}
+  .top .k{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#c8102e;font-weight:800}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:6px;font-size:12.5px}
+  .meta b{color:#000}
+  .focus{background:#fff6e0;border:1px solid #ffcf6b;border-radius:8px;padding:9px 12px;margin:12px 0 20px;font-size:12.5px}
+  .pweek{border:1px solid #d7dde4;border-radius:8px;margin-bottom:11px;overflow:hidden;page-break-inside:avoid}
+  .pwh{display:flex;justify-content:space-between;background:#f1f4f7;padding:7px 12px;font-size:13px;border-bottom:1px solid #d7dde4}
+  .pwh span{color:#5a6878}
+  .ptask{display:flex;align-items:flex-start;gap:9px;padding:6px 12px;border-bottom:1px solid #eef1f4}
+  .ptask:last-child{border-bottom:0}
+  .box{font-size:15px;line-height:1.2;flex:0 0 auto}
+  .plbl{flex:1}
+  .pblk{font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#7a8693;border:1px solid #d7dde4;border-radius:20px;padding:1px 8px;white-space:nowrap;align-self:center}
+  .foot{margin-top:18px;border-top:1px solid #d7dde4;padding-top:12px;font-size:11px;color:#5a6878;display:flex;justify-content:space-between}
+  .pledge{font-style:italic;color:#16202b}
+  @media print{@page{margin:14mm}body{padding:0}}
+</style></head><body>
+  <div class="top"><div class="seal"></div><div><div class="k">Red Seal Rescue · Coaching</div><h1>${esc(client.name)} — Study Plan</h1></div></div>
+  <div class="meta"><span>${t.emoji?"":""}<b>Trade:</b> ${esc(t.name)} (${t.code})</span><span><b>Exam date:</b> ${fmtDate(plan.examDate)}${d!=null&&d>=0?" ("+d+" days out)":""}</span><span><b>Plan:</b> ${plan.weeks.length} weeks @ ${plan.hoursPerWeek} h/week</span><span><b>Total tasks:</b> ${tot}</span></div>
+  <div class="focus"><b>Focus blocks (front-loaded):</b> ${esc(focus)}</div>
+  ${weeksHtml}
+  <div class="foot"><span class="pledge">Show up. Do the reps. One Red Seal at a time.</span><span>Generated ${fmtDate(today())}</span></div>
+</body></html>`;
+  const w=window.open("","_blank");
+  if(!w){toast("Allow pop-ups to print the plan");return;}
+  w.document.write(html);w.document.close();w.focus();
+  setTimeout(()=>{try{w.print();}catch(e){}},350);
+}
+
+/* ============================================================
+   10b. QUESTION BANK MANAGER
+   ============================================================ */
+VIEWS.bank=function(root,params){
+  const st={trade: params.trade || DB._lastBankTrade || "electrician"};
+  function paint(){
+    root.innerHTML="";
+    DB._lastBankTrade=st.trade;
+    const custCount=(DB.customQuestions||[]).length;
+    root.append(el(`<div class="page-head spread">
+      <div><div class="kicker">Question Bank</div><h1>Manage exam questions</h1>
+      <p class="muted">Add your own questions right here — no file editing. Custom questions are saved in this browser, used in every mock exam and intake, and included in your Export backup.${custCount?` <b>${custCount}</b> custom so far.`:""}</p></div>
+      <button class="btn primary" id="add">＋ Add question</button>
+    </div>`));
+    const seg=el(`<div class="seg" style="flex-wrap:wrap;margin-bottom:18px"></div>`);
+    trades().forEach(k=>{
+      const n=questionsFor(k).length;
+      const b=el(`<button class="${k===st.trade?'on':''}">${TRADES[k].emoji} ${TRADES[k].name.split(" ")[0]} <span class="dim" style="margin-left:3px">${n}</span></button>`);
+      b.onclick=()=>{st.trade=k;paint();};
+      seg.append(b);
+    });
+    root.append(seg);
+
+    const blocks=TRADES[st.trade].blocks;
+    const qs=questionsFor(st.trade);
+    blocks.forEach(block=>{
+      const list=qs.filter(q=>q.block===block);
+      const card=el(`<div class="card" style="margin-bottom:14px"><div class="spread" style="margin-bottom:6px"><h3>${esc(block)}</h3><span class="dim">${list.length} question${list.length===1?"":"s"}</span></div></div>`);
+      if(!list.length)card.append(el(`<div class="empty" style="padding:18px">Nothing here yet — add the first one.</div>`));
+      list.forEach(q=>{
+        const custom=!!q.id;
+        const item=el(`<div style="padding:11px 0;border-bottom:1px solid var(--line)">
+          <div class="spread" style="align-items:flex-start;gap:10px">
+            <div class="grow"><div style="font-weight:600">${esc(q.q)}</div>
+            <div class="muted" style="font-size:13px;margin-top:4px">Answer <b>${"ABCD"[q.answer]}</b> — ${esc(q.opts[q.answer])}</div></div>
+            <span class="pill ${custom?"amber":""}" style="flex:0 0 auto">${custom?"custom":"built-in"}</span>
+          </div></div>`);
+        if(custom){
+          const acts=el(`<div class="row" style="margin-top:9px"><button class="btn sm ghost" data-edit>Edit</button><button class="btn sm red ghost" data-del>Delete</button></div>`);
+          acts.querySelector("[data-edit]").onclick=()=>questionModal(q,paint);
+          acts.querySelector("[data-del]").onclick=()=>{if(confirm("Delete this custom question?")){DB.customQuestions=DB.customQuestions.filter(x=>x.id!==q.id);save();toast("Question deleted");paint();}};
+          item.append(acts);
+        }
+        card.append(item);
+      });
+      root.append(card);
+    });
+    $("#add",root).onclick=()=>questionModal({trade:st.trade,block:blocks[0]},paint);
+  }
+  paint();
+};
+
+/* ============================================================
+   11. MODALS
+   ============================================================ */
+function modal(node){
+  const bg=el(`<div class="modal-bg"></div>`);
+  bg.append(node);
+  bg.addEventListener("click",e=>{if(e.target===bg)bg.remove();});
+  document.body.append(bg);
+  return bg;
+}
+function addClientModal(existing){
+  const m=el(`<div class="modal">
+    <h2>${existing?"Edit client":"New client"}</h2>
+    <p class="muted" style="margin:2px 0 18px;font-size:13px">${existing?"Update their details.":"Creates a fresh client file. You can run an intake or mock exam right after."}</p>
+    <label class="fld" style="margin-bottom:12px">Name<input type="text" id="mName" value="${existing?esc(existing.name):""}" placeholder="Full name"></label>
+    <label class="fld" style="margin-bottom:12px">Trade<select id="mTrade"></select></label>
+    <label class="fld" style="margin-bottom:18px">Target exam date<input type="date" id="mDate" value="${existing?existing.examDate:""}"></label>
+    <div id="dupWarn"></div>
+    <div class="row"><button class="btn ghost grow" id="cancel">Cancel</button><button class="btn primary grow" id="ok">${existing?"Save":"Create"}</button></div>
+  </div>`);
+  const sel=$("#mTrade",m);
+  trades().forEach(k=>{const o=el(`<option value="${k}">${TRADES[k].emoji} ${TRADES[k].name}</option>`);sel.append(o);});
+  if(existing)sel.value=existing.trade;
+  const bg=modal(m);
+  const warn=$("#dupWarn",m);
+  function clearWarn(){warn.innerHTML="";delete warn.dataset.ack;}
+  // Clear any duplicate warning as soon as the coach edits the name or trade.
+  $("#mName",m).addEventListener("input",clearWarn);
+  sel.addEventListener("change",clearWarn);
+  $("#cancel",m).onclick=()=>bg.remove();
+  $("#ok",m).onclick=()=>{
+    const name=$("#mName",m).value.trim();if(!name){toast("Name required");return;}
+    const trade=sel.value;const date=$("#mDate",m).value;
+    if(existing){existing.name=name;existing.trade=trade;existing.examDate=date;save();bg.remove();toast("Saved");render();return;}
+    const create=()=>{const c=newClient(name,trade,date);bg.remove();toast("Client created");go("client",{id:c.id});};
+    const match=findClientByNameTrade(name,trade);
+    if(match&&!warn.dataset.ack){
+      // Non-blocking warning — never prevents creation, just offers the choice.
+      warn.dataset.ack="1";
+      warn.innerHTML="";
+      warn.append(el(`<div class="card tight" style="border-color:var(--warn);background:rgba(255,122,69,.08);margin-bottom:14px">
+        <div style="font-size:13px;color:var(--warn);font-weight:700;margin-bottom:8px">A ${esc(TRADES[trade].name)} client named "${esc(match.name)}" already exists.</div>
+        <div class="row"><button class="btn sm grow" data-open>Open existing file</button><button class="btn sm grow" data-anyway>Create anyway</button></div>
+        <div class="dim" style="font-size:12px;margin-top:7px">Or edit the name/trade above and Create again.</div>
+      </div>`));
+      $("[data-open]",warn).onclick=()=>{bg.remove();go("client",{id:match.id});};
+      $("[data-anyway]",warn).onclick=create;
+      return;
+    }
+    create();
+  };
+  setTimeout(()=>$("#mName",m).focus(),30);
+}
+function questionModal(seed,onDone){
+  const editing=!!seed.id;
+  const m=el(`<div class="modal"><h2>${editing?"Edit":"Add"} question</h2>
+    <p class="muted" style="margin:2px 0 16px;font-size:13px">Saved in this browser and used everywhere questions appear. Mark exactly one option correct.</p>
+    <div class="grid g2" style="margin-bottom:12px">
+      <label class="fld">Trade<select id="qTrade"></select></label>
+      <label class="fld">Block<select id="qBlock"></select></label>
+    </div>
+    <label class="fld" style="margin-bottom:12px">Question<textarea id="qText" placeholder="Enter the question…">${editing?esc(seed.q):""}</textarea></label>
+    <div id="optWrap"></div>
+    <label class="fld" style="margin:6px 0 16px">Why (shown in the answer review)<textarea id="qWhy" placeholder="Explain the correct answer…">${editing?esc(seed.why):""}</textarea></label>
+    <div class="row"><button class="btn ghost grow" id="cancel">Cancel</button><button class="btn primary grow" id="ok">${editing?"Save changes":"Add question"}</button></div>
+  </div>`);
+  const tSel=$("#qTrade",m), bSel=$("#qBlock",m);
+  trades().forEach(k=>tSel.append(el(`<option value="${k}">${TRADES[k].name}</option>`)));
+  tSel.value=seed.trade||"electrician";
+  function fillBlocks(){bSel.innerHTML="";TRADES[tSel.value].blocks.forEach(b=>bSel.append(el(`<option>${esc(b)}</option>`)));if(seed.block&&TRADES[tSel.value].blocks.includes(seed.block))bSel.value=seed.block;}
+  fillBlocks();tSel.onchange=fillBlocks;
+  const optWrap=$("#optWrap",m);const correct={v:editing?seed.answer:0};
+  for(let i=0;i<4;i++){
+    const row=el(`<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+      <input type="radio" name="qcorrect" ${(editing?seed.answer:0)===i?"checked":""} title="Mark correct" style="width:18px;height:18px;accent-color:var(--green);flex:0 0 auto">
+      <input type="text" data-opt="${i}" value="${editing?esc(seed.opts[i]):""}" placeholder="Option ${"ABCD"[i]}">
+    </div>`);
+    row.querySelector("input[type=radio]").onchange=()=>{correct.v=i;};
+    optWrap.append(row);
+  }
+  optWrap.append(el(`<div class="dim" style="font-size:12px;margin:2px 0 6px">● Select the radio beside the correct option.</div>`));
+  const bg=modal(m);
+  $("#cancel",m).onclick=()=>bg.remove();
+  $("#ok",m).onclick=()=>{
+    const q=$("#qText",m).value.trim();
+    const opts=[...optWrap.querySelectorAll("input[type=text]")].map(x=>x.value.trim());
+    const why=$("#qWhy",m).value.trim();
+    if(!q){toast("Enter the question");return;}
+    if(opts.some(o=>!o)){toast("Fill in all four options");return;}
+    const rec={trade:tSel.value,block:bSel.value,q,opts,answer:correct.v,why:why||"(no explanation provided)"};
+    if(editing){Object.assign(seed,rec);save();toast("Question updated");}
+    else{rec.id=uid();DB.customQuestions.push(rec);save();toast("Question added");}
+    bg.remove();if(onDone)onDone();
+  };
+  setTimeout(()=>$("#qText",m).focus(),30);
+}
+function mergeModal(){
+  const groups=duplicateGroups();
+  const m=el(`<div class="modal"><h2>Merge duplicate clients</h2>
+    <p class="muted" style="margin:2px 0 16px;font-size:13px">${groups.length?"Each group below is the same person across multiple files. Merging keeps the oldest record and folds in every exam, session, intake, and the most recent plan — nothing is lost.":"No duplicates left — you're all clear."}</p></div>`);
+  const bg=modal(m);
+  groups.forEach(g=>{
+    g.sort((a,b)=>(a.created||"").localeCompare(b.created||""));
+    const wrap=el(`<div class="card tight" style="margin-bottom:12px"><div class="spread" style="margin-bottom:8px"><b>${esc(g[0].name)} · ${TRADES[g[0].trade].name}</b><button class="btn sm primary" data-merge>Merge ${g.length} →</button></div></div>`);
+    g.forEach((c,i)=>{
+      wrap.append(el(`<div class="task"><div class="grow"><div style="font-weight:600;font-size:13px">${i===0?'<span class="pill green" style="margin-right:6px">keep</span>':""}Created ${fmtDate(c.created)}</div><div class="muted" style="font-size:12.5px">${(c.exams||[]).length} exam${(c.exams||[]).length===1?"":"s"} · ${(c.sessions||[]).length} session${(c.sessions||[]).length===1?"":"s"} · ${c.plan?"has plan":"no plan"} · exam ${fmtDate(c.examDate)}</div></div></div>`));
+    });
+    wrap.querySelector("[data-merge]").onclick=()=>{mergeClients(g.map(c=>c.id));toast("Merged into one file");bg.remove();mergeModal();};
+    m.append(wrap);
+  });
+  const foot=el(`<div class="row" style="margin-top:6px">${groups.length>1?'<button class="btn ghost grow" id="mergeAll">Merge all groups</button>':""}<button class="btn ${groups.length?"":"primary"} grow" id="done">Done</button></div>`);
+  m.append(foot);
+  $("#done",m).onclick=()=>{bg.remove();go("dashboard");};
+  if($("#mergeAll",m))$("#mergeAll",m).onclick=()=>{duplicateGroups().forEach(g=>mergeClients(g.map(c=>c.id)));toast("All duplicates merged");bg.remove();go("dashboard");};
+}
+function logSessionModal(client){
+  const m=el(`<div class="modal"><h2>Log a session</h2>
+    <p class="muted" style="margin:2px 0 18px;font-size:13px">Coaching call, study block, or check-in for ${esc(client.name)}.</p>
+    <div class="grid g2" style="margin-bottom:12px">
+      <label class="fld">Date<input type="date" id="sDate" value="${today()}"></label>
+      <label class="fld">Hours<input type="number" id="sHrs" min="0" step="0.5" value="1"></label>
+    </div>
+    <label class="fld" style="margin-bottom:18px">Notes<textarea id="sNote" placeholder="What you covered, homework set, how they're tracking…"></textarea></label>
+    <div class="row"><button class="btn ghost grow" id="cancel">Cancel</button><button class="btn primary grow" id="ok">Log it</button></div>
+  </div>`);
+  const bg=modal(m);
+  $("#cancel",m).onclick=()=>bg.remove();
+  $("#ok",m).onclick=()=>{
+    client.sessions.push({date:$("#sDate",m).value||today(),hours:$("#sHrs",m).value||0,note:$("#sNote",m).value.trim()});
+    save();bg.remove();toast("Session logged");go("client",{id:client.id});
+  };
+}
+function pickClientModal(trade,cb){
+  const matches=DB.clients.filter(c=>c.trade===trade);
+  const m=el(`<div class="modal"><h2>Save plan to a client</h2><p class="muted" style="margin:2px 0 16px;font-size:13px">${matches.length?"Pick a "+TRADES[trade].name+" client:":"No "+TRADES[trade].name+" clients yet — create one."}</p></div>`);
+  if(matches.length){
+    const list=el(`<div class="col" style="margin-bottom:16px"></div>`);
+    matches.forEach(c=>{const b=el(`<button class="btn ghost" style="justify-content:flex-start">${esc(c.name)}</button>`);b.onclick=()=>{bg.remove();cb(c);};list.append(b);});
+    m.append(list);
+  }
+  const r=el(`<div class="row"><button class="btn ghost grow" id="cancel">Cancel</button><button class="btn primary grow" id="new">＋ New client</button></div>`);
+  m.append(r);const bg=modal(m);
+  $("#cancel",m).onclick=()=>bg.remove();
+  $("#new",m).onclick=()=>{bg.remove();addClientModal();};
+}
+
+/* ============================================================
+   12. EXPORT / IMPORT
+   ============================================================ */
+function exportData(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download="red-seal-rescue-backup-"+today()+".json";a.click();URL.revokeObjectURL(url);
+  toast("Backup downloaded");
+}
+function importData(){
+  const inp=el(`<input type="file" accept="application/json" class="hidden">`);
+  document.body.append(inp);
+  inp.onchange=()=>{const f=inp.files[0];if(!f)return;const rd=new FileReader();
+    rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.clients)throw 0;
+      if(confirm("Replace all current data with this backup?")){DB=d;save();toast("Data imported");go("dashboard");}
+    }catch(e){toast("Invalid backup file");}inp.remove();};
+    rd.readAsText(f);};
+  inp.click();
+}
+
+/* ============================================================
+   13. BOOT
+   ============================================================ */
+go("dashboard");
+</script>
+</body>
+</html>
