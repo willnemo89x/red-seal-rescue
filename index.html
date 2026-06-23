@@ -198,8 +198,17 @@ tr.click:hover td{background:var(--panel2)}
    Passing standard modelled at 70% (Red Seal standard).
    ============================================================ */
 const PASS = 70;
-const APP_VERSION = "1.0";       // bump on each release
+const APP_VERSION = "1.1";       // bump on each release
 const APP_UPDATED = "2026-06-21"; // YYYY-MM-DD of this release
+
+// ── Payments (Stripe Connect sample server) ────────────────────────────────
+// "Collect payment" calls the rsr-stripe-connect-sample server (see the
+// RedSealRescue/stripe-connect-sample folder). PLACEHOLDER default below assumes
+// you're running that server locally. Host it somewhere and a coach can override
+// this URL in-app (stored per-browser) from the Collect-payment dialog.
+const PAYMENTS_API_DEFAULT = "http://localhost:4242";
+function paymentsApi(){ return (localStorage.getItem("rsr_payments_api") || PAYMENTS_API_DEFAULT).replace(/\/+$/,""); }
+function setPaymentsApi(url){ localStorage.setItem("rsr_payments_api", (url||"").trim().replace(/\/+$/,"")); }
 
 const TRADES = {
   electrician: {
@@ -664,12 +673,14 @@ VIEWS.client=function(root,{id}){
     <button class="btn" id="aIntake">◈ ${c.intake?"Redo":"Run"} intake</button>
     <button class="btn" id="aPlan">▦ ${c.plan?"View":"Build"} study plan</button>
     <button class="btn" id="aLog">＋ Log session</button>
+    <button class="btn" id="aPay">💳 Collect payment</button>
   </div>`);
   root.append(actions);
   $("#aExam",root).onclick=()=>go("exam",{id:c.id});
   $("#aIntake",root).onclick=()=>go("intake",{id:c.id});
   $("#aPlan",root).onclick=()=>go("plan",{id:c.id});
   $("#aLog",root).onclick=()=>logSessionModal(c);
+  $("#aPay",root).onclick=()=>collectPaymentModal(c);
 
   const cols=el(`<div class="row" style="align-items:flex-start"></div>`);
   const left=el(`<div class="grow col"></div>`);
@@ -1394,6 +1405,56 @@ function mergeModal(){
   $("#done",m).onclick=()=>{bg.remove();go("dashboard");};
   if($("#mergeAll",m))$("#mergeAll",m).onclick=()=>{duplicateGroups().forEach(g=>mergeClients(g.map(c=>c.id)));toast("All duplicates merged");bg.remove();go("dashboard");};
 }
+// Charge a client for a coaching package via the Stripe Connect sample server.
+function collectPaymentModal(client){
+  const m=el(`<div class="modal"><h2>Collect payment</h2>
+    <p class="muted" style="margin:2px 0 14px;font-size:13px">Charge ${esc(client.name)} for one of your coaching packages via Stripe. Funds go to your connected account, minus the platform fee.</p>
+    <label class="fld" style="margin-bottom:10px">Payments server URL
+      <input type="text" id="payUrl" value="${esc(paymentsApi())}" placeholder="https://your-stripe-server">
+    </label>
+    <div class="row" style="margin-bottom:12px"><button class="btn sm" id="loadBtn">Load packages</button></div>
+    <div id="payList"></div>
+    <div class="divider"></div>
+    <div class="row"><button class="btn ghost grow" id="cancel">Close</button></div>
+  </div>`);
+  const bg=modal(m);
+  $("#cancel",m).onclick=()=>bg.remove();
+  const listEl=$("#payList",m);
+  async function load(){
+    const base=$("#payUrl",m).value.trim().replace(/\/+$/,"");
+    if(!base){toast("Enter the payments server URL");return;}
+    setPaymentsApi(base); // remember it for next time (this browser)
+    listEl.innerHTML='<div class="empty" style="padding:20px">Loading packages…</div>';
+    try{
+      const r=await fetch(base+"/api/products");
+      const data=await r.json();
+      if(!r.ok) throw new Error(data.error||("HTTP "+r.status));
+      if(!Array.isArray(data)) throw new Error(data.error||"Unexpected response");
+      if(!data.length){listEl.innerHTML='<div class="empty" style="padding:20px">No packages found yet — create some in your Stripe storefront first.</div>';return;}
+      listEl.innerHTML="";
+      data.forEach(p=>{
+        const amount=new Intl.NumberFormat(undefined,{style:"currency",currency:(p.currency||"usd").toUpperCase()}).format((p.amount||0)/100);
+        const row=el(`<div class="task"><div class="grow"><div style="font-weight:600;font-size:13.5px">${esc(p.name)}</div><div class="muted" style="font-size:12.5px">${p.description?esc(p.description)+" · ":""}${amount}</div></div><button class="btn sm primary" data-buy>Charge</button></div>`);
+        row.querySelector("[data-buy]").onclick=async(e)=>{
+          e.target.disabled=true;e.target.textContent="…";
+          try{
+            const ret=location.href.split("?")[0]+"?payment=success";
+            const cr=await fetch(base+"/api/checkout",{method:"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({productId:p.id,successUrl:ret,cancelUrl:location.href.split("?")[0]})});
+            const cd=await cr.json();
+            if(!cr.ok) throw new Error(cd.error||"Checkout failed");
+            window.location.href=cd.url; // off to Stripe-hosted Checkout
+          }catch(err){toast(err.message);e.target.disabled=false;e.target.textContent="Charge";}
+        };
+        listEl.append(row);
+      });
+    }catch(err){
+      listEl.innerHTML='<div class="empty" style="padding:20px;border-color:var(--warn);color:var(--warn)">Couldn\'t load packages from <b>'+esc(base)+'</b>.<br><span style="color:#ff5e78;font-size:12.5px">'+esc(err.message)+'</span><br><span style="color:var(--ink3);font-size:12.5px;margin-top:6px;display:inline-block">Make sure the Stripe sample server is running (<span class="mono">npm run dev</span>) and the URL above is correct.</span></div>';
+    }
+  }
+  $("#loadBtn",m).onclick=load;
+  load(); // attempt on open
+}
 function logSessionModal(client){
   const m=el(`<div class="modal"><h2>Log a session</h2>
     <p class="muted" style="margin:2px 0 18px;font-size:13px">Coaching call, study block, or check-in for ${esc(client.name)}.</p>
@@ -1451,6 +1512,8 @@ function importData(){
 const verEl=document.getElementById("verline");
 if(verEl)verEl.textContent="v"+APP_VERSION+" · updated "+fmtDate(APP_UPDATED);
 go("dashboard");
+// Returned from a successful Stripe Checkout (see collectPaymentModal).
+if(new URLSearchParams(location.search).get("payment")==="success") setTimeout(()=>toast("Payment complete — thanks!"),400);
 </script>
 </body>
 </html>
